@@ -6,4 +6,9 @@ build/
 .venv/
 data/
 
+# dbt
+target/
+dbt_packages/
+logs/
+
 ai_history.md

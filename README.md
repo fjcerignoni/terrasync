@@ -1,11 +1,29 @@
 # terrasync
 
-Download geographic data from public GeoServer and shapefile sources.
+Acquire, store and process Brazilian geographic data focused on land tenure and the Forest Code.
 
-Currently supported sources:
-- **SICAR** — Cadastro Ambiental Rural (Rural Environmental Registry)
-- **FUNAI** — Terras Indígenas (Indigenous Lands)
-- **INCRA** — Quilombolas, Assentamentos, SIGEF e SNCI
+Data is downloaded to **bronze** (raw Parquet), cleaned via **dbt** into **silver**, and catalogued in a DuckDB database.
+
+## Sources
+
+### WFS (18 sources)
+
+| Source | Endpoint | Data |
+|--------|----------|------|
+| **SICAR** | geoserver.car.gov.br | Cadastro Ambiental Rural — 27 layers (one per state) |
+| **FUNAI** | geoserver.funai.gov.br | Terras Indígenas (polygons) |
+| **INCRA** (6 sources) | acervofundiario.incra.gov.br | Quilombolas, Assentamentos, SIGEF, SNCI (public/private) |
+| **ICMBio** | geoservicos.inde.gov.br | Unidades de Conservação federais |
+| **IBAMA** | siscom.ibama.gov.br | Embargos ambientais |
+| **PRODES** (6 biomes) | terrabrasilis.dpi.inpe.br | Desmatamento anual (Amazônia, Cerrado, Caatinga, Mata Atlântica, Pantanal, Pampa) |
+| **DETER** (2 biomes) | terrabrasilis.dpi.inpe.br | Alertas de desmatamento (Amazônia, Cerrado) |
+
+### ArcGIS REST (2 sources)
+
+| Source | Endpoint | Data |
+|--------|----------|------|
+| **ANA** | portal1.snirh.gov.br | Hidrografia, pivôs de irrigação, demanda e disponibilidade hídrica |
+| **SFB** | mapas.florestal.gov.br | Cadastro Nacional de Florestas Públicas, concessões florestais, IFN |
 
 ## Requirements
 
@@ -14,49 +32,89 @@ Currently supported sources:
 ## Installation and usage
 
 ```bash
-# Install dependencies and create virtual environment
 uv sync
+```
 
+### Ingest (bronze)
+
+```bash
 # Download all layers from a source
-uv run terrasync --source sicar
-uv run terrasync --source funai
-uv run terrasync --source incra
+uv run terrasync ingest --source sicar
+uv run terrasync ingest --source funai
+uv run terrasync ingest --source prodes_amazonia
+uv run terrasync ingest --source ana
 
-# Download specific layers (state codes for SICAR)
-uv run terrasync --source sicar --layers SP MG RJ
+# Download specific layers (WFS sources with multiple layers)
+uv run terrasync ingest --source sicar --layers sp mg rj
+uv run terrasync ingest --source incra_sigef_privado --layers sp pr
 
-# Re-download layers (remove existing before downloading again)
-uv run terrasync --source sicar --layers SP --reset
+# Re-download (remove existing before downloading)
+uv run terrasync ingest --source sicar --layers sp --reset
 
-# Download and post-process (fix geometries, filter bounds)
-uv run terrasync --source funai --process
-
-# Enable verbose logging
-uv run terrasync --source sicar --layers SP --debug
+# Verbose logging
+uv run terrasync ingest --source funai --debug
 ```
 
-### CLI arguments
+### Transform (silver)
 
-| Argument | Description |
-|---|---|
-| `--source` | **(required)** Data source to use. Available: `sicar`, `funai`, `incra` |
-| `--layers ID [ID ...]` | Layer identifiers to download (default: all). E.g.: `--layers SP MG RJ` |
-| `--reset` | Remove selected layers from the GPKG before downloading again |
-| `--process` | Apply post-processing (filter bounds, fix geometries) and save processed layers |
-| `--debug` | Enable DEBUG level logging |
+```bash
+# Run all dbt staging models
+uv run terrasync transform
 
-Output files are saved to the `data/` directory (e.g. `data/SICAR.gpkg`, `data/Funai.gpkg`, `data/Incra.gpkg`).
-Layers already downloaded are automatically skipped on reruns.
+# Run a specific model
+uv run terrasync transform --select stg_funai
 
-## Structure
+# Full refresh
+uv run terrasync transform --full-refresh
+```
+
+You can also run dbt directly:
+
+```bash
+dbt run --profiles-dir . --project-dir .
+dbt run -s stg_funai --profiles-dir . --project-dir .
+```
+
+## Data layout
 
 ```
-src/terrasync/
-├── config.py                # Source definitions and settings
-├── logging_config.py        # Logging setup
-├── client.py                # WFS requests with retry/backoff
-├── downloader.py            # Async GeoServer download orchestration
-├── shapefile_downloader.py  # Shapefile ZIP download
-├── processor.py             # Geometry processing
-└── main.py                  # CLI entrypoint
+data/
+├── bronze/                          # Raw data (Parquet per layer)
+│   ├── sicar/*.parquet              # one file per UF
+│   ├── funai/*.parquet
+│   ├── incra_quilombolas/*.parquet
+│   ├── incra_assentamentos/*.parquet
+│   ├── incra_sigef_privado/*.parquet
+│   ├── ...
+│   ├── icmbio/*.parquet
+│   ├── ibama/*.parquet
+│   ├── prodes_amazonia/*.parquet
+│   ├── ...
+│   ├── deter_amazonia/*.parquet
+│   ├── ana/*.parquet                # one file per layer
+│   └── sfb/*.parquet
+├── silver/                          # Cleaned data (dbt staging models)
+│   ├── stg_sicar.parquet
+│   ├── stg_funai.parquet
+│   ├── stg_incra_*.parquet
+│   ├── stg_prodes_*.parquet
+│   ├── stg_ana_*.parquet
+│   └── ...
+└── terrasync.duckdb                 # Catalogue with views over parquet files
+```
+
+## Project structure
+
+```
+├── pyproject.toml
+├── dbt_project.yml          # dbt project config
+├── profiles.yml             # dbt DuckDB profile
+├── models/staging/          # 25 dbt staging models (bronze → silver)
+├── macros/                  # dbt macros (clean_geometry)
+├── src/terrasync/
+│   ├── config.py            # WFSSource / ArcGISSource dataclasses, 20 source instances
+│   ├── downloader.py        # Unified async download (WFS + ArcGIS REST) → Parquet
+│   ├── catalog.py           # DuckDB catalogue refresh
+│   ├── logging_config.py    # Logging setup
+│   └── main.py              # CLI entrypoint (ingest / transform)
 ```

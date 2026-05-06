@@ -1,0 +1,8 @@
+terrasync:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "data/terrasync.duckdb"
+      extensions:
+        - spatial
