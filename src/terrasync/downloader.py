@@ -205,7 +205,7 @@ async def _download_arcgis_layer(
             logger.info("[%s] Parquet already exists, skipping.", layer_id)
             return
 
-        service_path = source.layers[layer_id]
+        service_path = source.layer_service_paths[layer_id]
         url = f"{source.base_url}/{service_path}/query"
         logger.info("[%s] Fetching from ArcGIS REST: %s", layer_id, url)
 
@@ -245,7 +245,7 @@ async def download_all(
     timeout = httpx.Timeout(connect=30.0, read=600.0, write=30.0, pool=30.0)
 
     if isinstance(source, WFSSource):
-        layer_ids = layers or source.layers
+        layer_ids = layers or source.layer_ids
         sem = asyncio.Semaphore(source.max_concurrent)
         async with httpx.AsyncClient(
             limits=limits, timeout=timeout, follow_redirects=True, verify=ssl_ctx,

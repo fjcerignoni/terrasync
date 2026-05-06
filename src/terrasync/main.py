@@ -3,18 +3,20 @@ import asyncio
 import logging
 
 from .catalog import refresh_catalog
-from .config import SOURCES, ArcGISSource, WFSSource
+from .config import SOURCES, SOURCE_GROUPS, ArcGISSource, WFSSource, resolve_sources
 from .downloader import download_all
 from .logging_config import setup_logging
+
+_VALID_SOURCE_CHOICES = sorted(set(list(SOURCES) + list(SOURCE_GROUPS) + ["all"]))
 
 
 def _add_ingest_parser(subparsers: argparse._SubParsersAction) -> None:
     p = subparsers.add_parser("ingest", help="Download data to bronze layer.")
     p.add_argument(
         "--source",
-        choices=list(SOURCES),
+        choices=_VALID_SOURCE_CHOICES,
         required=True,
-        help="Data source to use. Available: " + ", ".join(SOURCES),
+        help="Data source, group, or 'all'. Groups: " + ", ".join(SOURCE_GROUPS),
     )
     p.add_argument(
         "--layers",
@@ -61,23 +63,38 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
-    source = SOURCES[args.source]
+    targets = resolve_sources(args.source)
 
-    if isinstance(source, WFSSource):
-        valid_layers = source.layers
-    elif isinstance(source, ArcGISSource):
-        valid_layers = source.layer_ids
+    async def _ingest_one(source):
+        if isinstance(source, WFSSource):
+            valid_layers = source.layer_ids
+        elif isinstance(source, ArcGISSource):
+            valid_layers = source.layer_ids
+        else:
+            return
 
-    layers = [lid.lower() for lid in args.layers] if args.layers else valid_layers
+        layers = [lid.lower() for lid in args.layers] if args.layers else valid_layers
+        invalid = [lid for lid in layers if lid not in valid_layers]
+        if invalid:
+            logger.error("[%s] Invalid layers: %s", source.name, invalid)
+            return
 
-    invalid = [lid for lid in layers if lid not in valid_layers]
-    if invalid:
-        logger.error("Invalid layers: %s", invalid)
-        raise SystemExit(1)
+        logger.info("Starting ingest for %s: %d layers", source.name, len(layers))
+        await download_all(source, layers, reset=args.reset)
+        logger.info("[%s] All downloads finished.", source.name)
 
-    logger.info("Starting ingest for %s: %s", args.source, layers)
-    asyncio.run(download_all(source, layers, reset=args.reset))
-    logger.info("All downloads finished.")
+    async def _run_all():
+        failed = []
+        for source in targets:
+            try:
+                await _ingest_one(source)
+            except Exception:
+                logger.exception("[%s] Ingest failed, continuing...", source.name)
+                failed.append(source.name)
+        if failed:
+            logger.error("Failed sources: %s", failed)
+
+    asyncio.run(_run_all())
 
     logger.info("Refreshing DuckDB catalog...")
     refresh_catalog()

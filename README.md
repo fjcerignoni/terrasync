@@ -44,6 +44,14 @@ uv run terrasync ingest --source funai
 uv run terrasync ingest --source prodes_amazonia
 uv run terrasync ingest --source ana
 
+# Download by group (downloads all sub-sources)
+uv run terrasync ingest --source incra     # quilombolas + sigef + snci + assentamentos
+uv run terrasync ingest --source prodes    # all 6 biomes
+uv run terrasync ingest --source deter     # amazonia + cerrado
+
+# Download everything
+uv run terrasync ingest --source all
+
 # Download specific layers (WFS sources with multiple layers)
 uv run terrasync ingest --source sicar --layers sp mg rj
 uv run terrasync ingest --source incra_sigef_privado --layers sp pr
@@ -112,9 +120,22 @@ data/
 ├── models/staging/          # 25 dbt staging models (bronze → silver)
 ├── macros/                  # dbt macros (clean_geometry)
 ├── src/terrasync/
-│   ├── config.py            # WFSSource / ArcGISSource dataclasses, 20 source instances
+│   ├── sources.yaml         # Declarative source catalog (all sources, groups, metadata)
+│   ├── config.py            # Pydantic models + YAML loader + resolve_sources()
 │   ├── downloader.py        # Unified async download (WFS + ArcGIS REST) → Parquet
 │   ├── catalog.py           # DuckDB catalogue refresh
 │   ├── logging_config.py    # Logging setup
 │   └── main.py              # CLI entrypoint (ingest / transform)
 ```
+
+## Source groups
+
+Sources can be ingested individually or by group:
+
+| Group | Sources |
+|-------|--------|
+| `incra` | quilombolas, sigef_privado, sigef_publico, snci_privado, snci_publico, assentamentos |
+| `prodes` | amazonia, cerrado, caatinga, mata_atlantica, pantanal, pampa |
+| `deter` | amazonia, cerrado |
+| `ana` | hidrografia, pivos, demanda, disponibilidade |
+| `sfb` | cnfp, concessoes, ifn_conglomerados |

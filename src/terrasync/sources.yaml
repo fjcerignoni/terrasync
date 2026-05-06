@@ -1,0 +1,597 @@
+# terrasync — Source catalog
+# Declarative definition of all data sources.
+# Consumed by config.py (pydantic loader).
+
+groups:
+  incra:
+    name: "INCRA - Acervo Fundiário"
+    description: "Dados fundiários do Instituto Nacional de Colonização e Reforma Agrária"
+    sources:
+      - incra_quilombolas
+      - incra_sigef_privado
+      - incra_sigef_publico
+      - incra_snci_privado
+      - incra_snci_publico
+      - incra_assentamentos
+
+  prodes:
+    name: "PRODES - Desmatamento Anual"
+    description: "Monitoramento do desmatamento por corte raso (INPE)"
+    sources:
+      - prodes_amazonia
+      - prodes_cerrado
+      - prodes_caatinga
+      - prodes_mata_atlantica
+      - prodes_pantanal
+      - prodes_pampa
+
+  deter:
+    name: "DETER - Alertas de Desmatamento"
+    description: "Sistema de detecção em tempo real de desmatamento (INPE)"
+    sources:
+      - deter_amazonia
+      - deter_cerrado
+
+  ana:
+    name: "ANA - Agência Nacional de Águas"
+    description: "Dados hídricos e de irrigação"
+    sources:
+      - ana
+
+  sfb:
+    name: "SFB - Serviço Florestal Brasileiro"
+    description: "Cadastro Nacional de Florestas Públicas e concessões"
+    sources:
+      - sfb
+
+# ---------------------------------------------------------------------------
+# WFS Sources
+# ---------------------------------------------------------------------------
+
+sources:
+  sicar:
+    type: wfs
+    display_name: "SICAR - CAR"
+    description: "Cadastro Ambiental Rural por UF"
+    category: land_use
+    base_url: "https://geoserver.car.gov.br/geoserver/sicar/ows"
+    layer_template: "sicar:sicar_imoveis_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "2.0.0"
+    page_size: 10000
+    max_concurrent: 3
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  funai:
+    type: wfs
+    display_name: "FUNAI - Terras Indígenas"
+    description: "Terras indígenas demarcadas (polígonos)"
+    category: boundaries
+    base_url: "https://geoserver.funai.gov.br/geoserver/Funai/ows"
+    layer_template: "Funai:{layer}"
+    layers:
+      - id: tis_poligonais
+        name: "Terras Indígenas"
+        geometry_type: MultiPolygon
+    wfs_version: "2.0.0"
+    page_size: 10000
+    max_concurrent: 3
+    epsg: 4674
+    sort_by: gid
+    geometry_type: MultiPolygon
+
+  incra_quilombolas:
+    type: wfs
+    display_name: "INCRA - Quilombolas"
+    description: "Áreas quilombolas reconhecidas"
+    category: boundaries
+    group: incra
+    base_url: "https://cmr.funai.gov.br/geoserver/ows"
+    layer_template: "CMR-PUBLICO:{layer}"
+    layers:
+      - id: lim_quilombolas_a
+        name: "Áreas Quilombolas"
+        geometry_type: MultiPolygon
+    wfs_version: "1.0.0"
+    page_size: 10000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  incra_sigef_privado:
+    type: wfs
+    display_name: "INCRA - SIGEF Privado"
+    description: "Imóveis rurais certificados (privados) via SIGEF"
+    category: land_use
+    group: incra
+    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
+    layer_template: "certificada_sigef_particular_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    extra_params:
+      tema: "certificada_sigef_particular_{layer}"
+    geometry_type: MultiPolygon
+
+  incra_sigef_publico:
+    type: wfs
+    display_name: "INCRA - SIGEF Público"
+    description: "Imóveis rurais certificados (públicos) via SIGEF"
+    category: land_use
+    group: incra
+    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
+    layer_template: "certificada_sigef_publico_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    extra_params:
+      tema: "certificada_sigef_publico_{layer}"
+    geometry_type: MultiPolygon
+
+  incra_snci_privado:
+    type: wfs
+    display_name: "INCRA - SNCI Privado"
+    description: "Imóveis certificados SNCI (privados)"
+    category: land_use
+    group: incra
+    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
+    layer_template: "imoveiscertificados_privado_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    extra_params:
+      tema: "imoveiscertificados_privado_{layer}"
+    geometry_type: MultiPolygon
+
+  incra_snci_publico:
+    type: wfs
+    display_name: "INCRA - SNCI Público"
+    description: "Imóveis certificados SNCI (públicos)"
+    category: land_use
+    group: incra
+    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
+    layer_template: "imoveiscertificados_publico_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    extra_params:
+      tema: "imoveiscertificados_publico_{layer}"
+    geometry_type: MultiPolygon
+
+  incra_assentamentos:
+    type: wfs
+    display_name: "INCRA - Assentamentos"
+    description: "Assentamentos da reforma agrária"
+    category: boundaries
+    group: incra
+    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
+    layer_template: "assentamentos_{layer}"
+    layers:
+      - id: ac
+      - id: al
+      - id: am
+      - id: ap
+      - id: ba
+      - id: ce
+      - id: df
+      - id: es
+      - id: go
+      - id: ma
+      - id: mg
+      - id: ms
+      - id: mt
+      - id: pa
+      - id: pb
+      - id: pe
+      - id: pi
+      - id: pr
+      - id: rj
+      - id: rn
+      - id: ro
+      - id: rr
+      - id: rs
+      - id: sc
+      - id: se
+      - id: sp
+      - id: to
+    wfs_version: "1.0.0"
+    page_size: 10000
+    max_concurrent: 1
+    epsg: 4674
+    extra_params:
+      tema: "assentamentos_{layer}"
+    geometry_type: MultiPolygon
+
+  icmbio:
+    type: wfs
+    display_name: "ICMBio - Unidades de Conservação"
+    description: "Limites das unidades de conservação federais"
+    category: environmental
+    base_url: "https://geoservicos.inde.gov.br/geoserver/ICMBio/ows"
+    layer_template: "ICMBio:{layer}"
+    layers:
+      - id: limiteucsfederais_a
+        name: "UCs Federais"
+        geometry_type: MultiPolygon
+    wfs_version: "1.1.0"
+    page_size: 100000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  ibama:
+    type: wfs
+    display_name: "IBAMA - Embargos"
+    description: "Áreas embargadas por infração ambiental"
+    category: environmental
+    base_url: "https://siscom.ibama.gov.br/geoserver/wfs"
+    layer_template: "publica:{layer}"
+    layers:
+      - id: vw_brasil_adm_embargo_a
+        name: "Embargos Ambientais"
+        geometry_type: MultiPolygon
+    wfs_version: "2.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_amazonia:
+    type: wfs
+    display_name: "PRODES Amazônia"
+    description: "Desmatamento anual por corte raso na Amazônia"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-amazon-nb/ows"
+    layer_template: "prodes-amazon-nb:{layer}"
+    layers:
+      - id: yearly_deforestation_biome
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_cerrado:
+    type: wfs
+    display_name: "PRODES Cerrado"
+    description: "Desmatamento anual por corte raso no Cerrado"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-cerrado-nb/ows"
+    layer_template: "prodes-cerrado-nb:{layer}"
+    layers:
+      - id: yearly_deforestation
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_caatinga:
+    type: wfs
+    display_name: "PRODES Caatinga"
+    description: "Desmatamento anual por corte raso na Caatinga"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-caatinga-nb/ows"
+    layer_template: "prodes-caatinga-nb:{layer}"
+    layers:
+      - id: yearly_deforestation
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_mata_atlantica:
+    type: wfs
+    display_name: "PRODES Mata Atlântica"
+    description: "Desmatamento anual por corte raso na Mata Atlântica"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-mata-atlantica-nb/ows"
+    layer_template: "prodes-mata-atlantica-nb:{layer}"
+    layers:
+      - id: yearly_deforestation
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_pantanal:
+    type: wfs
+    display_name: "PRODES Pantanal"
+    description: "Desmatamento anual por corte raso no Pantanal"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-pantanal-nb/ows"
+    layer_template: "prodes-pantanal-nb:{layer}"
+    layers:
+      - id: yearly_deforestation
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  prodes_pampa:
+    type: wfs
+    display_name: "PRODES Pampa"
+    description: "Desmatamento anual por corte raso no Pampa"
+    category: deforestation
+    group: prodes
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-pampa-nb/ows"
+    layer_template: "prodes-pampa-nb:{layer}"
+    layers:
+      - id: yearly_deforestation
+        name: "Desmatamento Anual"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 50000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  deter_amazonia:
+    type: wfs
+    display_name: "DETER Amazônia"
+    description: "Alertas de desmatamento em tempo quase-real na Amazônia"
+    category: deforestation
+    group: deter
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/deter-amz/ows"
+    layer_template: "deter-amz:{layer}"
+    layers:
+      - id: deter_amz
+        name: "Alertas DETER"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 100000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  deter_cerrado:
+    type: wfs
+    display_name: "DETER Cerrado"
+    description: "Alertas de desmatamento em tempo quase-real no Cerrado"
+    category: deforestation
+    group: deter
+    temporal: true
+    base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/deter-cerrado-nb/ows"
+    layer_template: "deter-cerrado-nb:{layer}"
+    layers:
+      - id: deter_cerrado
+        name: "Alertas DETER"
+        geometry_type: MultiPolygon
+        temporal: true
+    wfs_version: "1.0.0"
+    page_size: 100000
+    max_concurrent: 1
+    epsg: 4674
+    geometry_type: MultiPolygon
+
+  # -------------------------------------------------------------------------
+  # ArcGIS REST Sources
+  # -------------------------------------------------------------------------
+
+  ana:
+    type: arcgis
+    display_name: "ANA - Águas"
+    description: "Dados da Agência Nacional de Águas e Saneamento Básico"
+    category: environmental
+    group: ana
+    base_url: "https://portal1.snirh.gov.br/server/rest/services/dados_abertos"
+    layers:
+      - id: hidrografia
+        name: "Hidrografia"
+        service_path: "Hidrografia/FeatureServer/0"
+        geometry_type: MultiLineString
+      - id: pivos_irrigacao
+        name: "Pivôs de Irrigação"
+        service_path: "Pivos_Mapeados/FeatureServer/0"
+        geometry_type: MultiPolygon
+      - id: demanda_irrigacao
+        name: "Demanda de Irrigação"
+        service_path: "Demanda_de_Irrigacao_Vazao_de_Retirada_para_Irrigacao/FeatureServer/0"
+        geometry_type: Point
+      - id: disponibilidade_hidrica
+        name: "Disponibilidade Hídrica"
+        service_path: "Disponibilidade_Hidrica_Superficial/FeatureServer/0"
+        geometry_type: Point
+    max_record_count: 1000
+    max_concurrent: 2
+    epsg: 4674
+
+  sfb:
+    type: arcgis
+    display_name: "SFB - Florestas Públicas"
+    description: "Cadastro Nacional de Florestas Públicas e concessões florestais"
+    category: environmental
+    group: sfb
+    base_url: "https://mapas.florestal.gov.br/server/rest/services"
+    layers:
+      - id: cnfp
+        name: "Cadastro Nacional de Florestas Públicas"
+        service_path: "Hosted/CNFP_v19_03_retificado_17072025/FeatureServer/9"
+        geometry_type: MultiPolygon
+      - id: concessoes
+        name: "Concessões Florestais"
+        service_path: "Hosted/unidades_concessoes_florestais/FeatureServer/0"
+        geometry_type: MultiPolygon
+      - id: ifn_conglomerados
+        name: "IFN - Conglomerados"
+        service_path: "DadosAbertos-IFN/Conglomerado/FeatureServer/0"
+        geometry_type: Point
+    max_record_count: 2000
+    max_concurrent: 2
+    epsg: 4674
