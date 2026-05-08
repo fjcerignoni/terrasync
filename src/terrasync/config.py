@@ -46,6 +46,7 @@ class WFSSource(BaseModel):
     sort_by: str | None = None
     extra_params: dict[str, str] | None = None
     geometry_type: str = "MultiPolygon"
+    use_gml: bool = False
 
     @property
     def bronze_dir(self) -> Path:

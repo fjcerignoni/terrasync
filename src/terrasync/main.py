@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from .catalog import refresh_catalog
-from .config import SOURCES, SOURCE_GROUPS, ArcGISSource, WFSSource, resolve_sources
+from .config import SOURCES, SOURCE_GROUPS, resolve_sources
 from .downloader import download_all
 from .logging_config import setup_logging
 
@@ -64,16 +64,20 @@ def _parse_args() -> argparse.Namespace:
 
 def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
     targets = resolve_sources(args.source)
+    requested = [lid.lower() for lid in args.layers] if args.layers else None
+
+    # When targeting a group, --layers may refer to sub-source names
+    # (e.g. --source incra --layers incra_sigef_privado) rather than
+    # layer IDs within a source (e.g. --source sicar --layers sp).
+    if args.source in SOURCE_GROUPS and requested:
+        source_names = {s.name for s in targets}
+        if all(r in source_names for r in requested):
+            targets = [s for s in targets if s.name in requested]
+            requested = None  # download all layers within each matched source
 
     async def _ingest_one(source):
-        if isinstance(source, WFSSource):
-            valid_layers = source.layer_ids
-        elif isinstance(source, ArcGISSource):
-            valid_layers = source.layer_ids
-        else:
-            return
-
-        layers = [lid.lower() for lid in args.layers] if args.layers else valid_layers
+        valid_layers = source.layer_ids
+        layers = requested if requested is not None else valid_layers
         invalid = [lid for lid in layers if lid not in valid_layers]
         if invalid:
             logger.error("[%s] Invalid layers: %s", source.name, invalid)

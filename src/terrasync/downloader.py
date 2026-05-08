@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import ssl
+import tempfile
+import time
 from pathlib import Path
 
 import geopandas as gpd
@@ -63,8 +65,9 @@ def _wfs_base_params(source: WFSSource, layer_id: str) -> dict:
         "version": source.wfs_version,
         "request": "GetFeature",
         "typeName": source.layer_template.format(layer=layer_id),
-        "outputFormat": "application/json",
     }
+    if not source.use_gml:
+        params["outputFormat"] = "application/json"
     if source.sort_by:
         params["sortBy"] = source.sort_by
     if source.extra_params:
@@ -119,6 +122,43 @@ async def _wfs_fetch_page(
     return gpd.GeoDataFrame.from_features(features)
 
 
+@retry(
+    retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+    wait=wait_exponential(multiplier=2, min=4, max=60),
+    stop=stop_after_attempt(5),
+    reraise=True,
+)
+async def _wfs_fetch_gml(
+    client: httpx.AsyncClient, source: WFSSource, layer_id: str,
+) -> gpd.GeoDataFrame:
+    params = _wfs_base_params(source, layer_id)
+    chunks: list[bytes] = []
+    t_dl = time.monotonic()
+    async with client.stream("GET", source.base_url, params=params) as r:
+        r.raise_for_status()
+        async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
+            chunks.append(chunk)
+    content = b"".join(chunks)
+    dl_secs = time.monotonic() - t_dl
+    size_kb = len(content) / 1024
+    logger.info(
+        "[%s] Download complete: %.0f KB in %.1fs", layer_id, size_kb, dl_secs
+    )
+    with tempfile.NamedTemporaryFile(suffix=".gml", delete=False) as f:
+        f.write(content)
+        tmp_path = f.name
+    try:
+        t_parse = time.monotonic()
+        gdf = gpd.read_file(tmp_path)
+        logger.info(
+            "[%s] GML parsed: %d features in %.1fs",
+            layer_id, len(gdf), time.monotonic() - t_parse,
+        )
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+    return gdf
+
+
 async def _download_wfs_layer(
     client: httpx.AsyncClient,
     source: WFSSource,
@@ -131,6 +171,20 @@ async def _download_wfs_layer(
             _remove_layer(source, layer_id)
         if _layer_exists(source, layer_id):
             logger.info("[%s] Parquet already exists, skipping.", layer_id)
+            return
+
+        if source.use_gml:
+            logger.info("[%s] Downloading GML (no pagination)...", layer_id)
+            try:
+                gdf = await _wfs_fetch_gml(client, source, layer_id)
+            except Exception:
+                logger.exception("[%s] Failed to download GML.", layer_id)
+                return
+            if gdf.empty:
+                logger.warning("[%s] No features found.", layer_id)
+                return
+            logger.info("[%s] %d features received.", layer_id, len(gdf))
+            _save_geodataframe(gdf, source, layer_id)
             return
 
         logger.info("[%s] Querying total features...", layer_id)
@@ -150,7 +204,10 @@ async def _download_wfs_layer(
         frames: list[gpd.GeoDataFrame] = []
         for start in range(0, total, source.page_size):
             page_num = start // source.page_size + 1
-            logger.info("[%s] Downloading page %d/%d (offset %d)...", layer_id, page_num, total_pages, start)
+            logger.info(
+                "[%s] Downloading page %d/%d (offset %d)...",
+                layer_id, page_num, total_pages, start,
+            )
             try:
                 gdf = await _wfs_fetch_page(client, source, layer_id, start)
                 if not gdf.empty:
