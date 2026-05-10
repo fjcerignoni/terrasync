@@ -50,6 +50,8 @@ class WFSSource(BaseModel):
 
     @property
     def bronze_dir(self) -> Path:
+        if self.group and self.group != self.name:
+            return BRONZE_DIR / self.group
         return BRONZE_DIR / self.name
 
     @property
@@ -80,6 +82,8 @@ class ArcGISSource(BaseModel):
 
     @property
     def bronze_dir(self) -> Path:
+        if self.group and self.group != self.name:
+            return BRONZE_DIR / self.group
         return BRONZE_DIR / self.name
 
     @property
@@ -91,7 +95,28 @@ class ArcGISSource(BaseModel):
         return {l.id: l.service_path for l in self.layers if l.service_path}
 
 
-DataSource = WFSSource | ArcGISSource
+class ZipShapefileSource(BaseModel):
+    type: Literal["zip_shapefile"] = "zip_shapefile"
+    name: str = ""
+    display_name: str = ""
+    description: str = ""
+    category: str = "boundaries"
+    group: str | None = None
+    epsg: int = 4674
+    url: str
+
+    @property
+    def bronze_dir(self) -> Path:
+        if self.group and self.group != self.name:
+            return BRONZE_DIR / self.group
+        return BRONZE_DIR / self.name
+
+    @property
+    def layer_ids(self) -> list[str]:
+        return [self.name]
+
+
+DataSource = WFSSource | ArcGISSource | ZipShapefileSource
 
 
 class SourceGroup(BaseModel):
@@ -119,6 +144,8 @@ def _load_catalog(
             src = WFSSource(**cfg)
         elif src_type == "arcgis":
             src = ArcGISSource(**cfg)
+        elif src_type == "zip_shapefile":
+            src = ZipShapefileSource(**cfg)
         else:
             raise ValueError(f"Unknown source type: {src_type} for {key}")
         src.name = key

@@ -1,14 +1,18 @@
 import asyncio
+import io
 import json
 import logging
+import shutil
 import ssl
 import tempfile
 import time
+import zipfile
 from pathlib import Path
 
 import geopandas as gpd
 import httpx
 import pandas as pd
+import pyarrow.parquet as pq
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -16,7 +20,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from .config import ArcGISSource, DataSource, WFSSource
+from .config import ArcGISSource, DataSource, WFSSource, ZipShapefileSource
 
 logger = logging.getLogger("terrasync.downloader")
 
@@ -33,7 +37,9 @@ def _make_ssl_context() -> ssl.SSLContext:
 
 
 def _parquet_path(source: DataSource, layer_id: str) -> Path:
-    return source.bronze_dir / f"{layer_id}.parquet"
+    if layer_id == source.name:
+        return source.bronze_dir / f"{layer_id}.parquet"
+    return source.bronze_dir / f"{source.name}_{layer_id}.parquet"
 
 
 def _layer_exists(source: DataSource, layer_id: str) -> bool:
@@ -288,6 +294,81 @@ async def _download_arcgis_layer(
 
 
 # ---------------------------------------------------------------------------
+# ZIP Shapefile strategy
+# ---------------------------------------------------------------------------
+
+_ZIP_CHUNK_SIZE = 50_000
+
+
+def _shapefile_to_parquet(shp_path: Path, out_path: Path, epsg: int) -> int:
+    """Write shapefile to parquet in chunks to avoid OOM on large files."""
+    writer = None
+    total = 0
+    t0 = time.monotonic()
+    try:
+        for chunk in gpd.read_file(shp_path, engine="fiona", chunksize=_ZIP_CHUNK_SIZE):
+            if chunk.crs is None:
+                chunk.set_crs(epsg=epsg, inplace=True)
+            buf = io.BytesIO()
+            chunk.to_parquet(buf, index=False)
+            buf.seek(0)
+            table = pq.read_table(buf)
+            if writer is None:
+                writer = pq.ParquetWriter(out_path, table.schema)
+            writer.write_table(table)
+            total += len(chunk)
+            logger.debug("[%s] Written %d features so far...", out_path.stem, total)
+    finally:
+        if writer:
+            writer.close()
+    logger.info("[%s] Parquet written: %d features in %.1fs", out_path.stem, total, time.monotonic() - t0)
+    return total
+
+
+def _download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
+    layer_id = source.name
+    if reset:
+        _remove_layer(source, layer_id)
+    if _layer_exists(source, layer_id):
+        logger.info("[%s] Parquet already exists, skipping.", layer_id)
+        return
+
+    logger.info("[%s] Downloading ZIP from %s ...", layer_id, source.url)
+    timeout = httpx.Timeout(connect=30.0, read=600.0, write=30.0, pool=30.0)
+    tmp_dir = Path(tempfile.mkdtemp(prefix=f"terrasync_{layer_id}_"))
+    zip_path = tmp_dir / "download.zip"
+    extract_dir = tmp_dir / "extracted"
+    out_path = _parquet_path(source, layer_id)
+
+    try:
+        t_dl = time.monotonic()
+        with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
+            with client.stream("GET", source.url) as r:
+                r.raise_for_status()
+                with open(zip_path, "wb") as f:
+                    for chunk in r.iter_bytes(chunk_size=1024 * 1024):
+                        f.write(chunk)
+        size_kb = zip_path.stat().st_size / 1024
+        logger.info("[%s] Download complete: %.0f KB in %.1fs", layer_id, size_kb, time.monotonic() - t_dl)
+
+        with zipfile.ZipFile(zip_path) as zf:
+            shp_files = [n for n in zf.namelist() if n.endswith(".shp")]
+            if not shp_files:
+                logger.error("[%s] No .shp file found in ZIP.", layer_id)
+                return
+            zf.extractall(extract_dir)
+
+        total = _shapefile_to_parquet(extract_dir / shp_files[0], out_path, source.epsg)
+        logger.info("[%s] Done: %d features saved to %s.", layer_id, total, out_path)
+    except Exception:
+        logger.exception("[%s] Failed to download ZIP shapefile.", layer_id)
+        if out_path.exists():
+            out_path.unlink()
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
 # Unified entrypoint
 # ---------------------------------------------------------------------------
 
@@ -320,3 +401,6 @@ async def download_all(
             await asyncio.gather(
                 *[_download_arcgis_layer(client, source, lid, sem, reset) for lid in layer_ids]
             )
+
+    elif isinstance(source, ZipShapefileSource):
+        await asyncio.to_thread(_download_zip_layer, source, reset)

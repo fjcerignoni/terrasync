@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "DuckDB",
+            "database": "\\\\wsl.localhost\\Ubuntu\\home\\felipe\\codes\\terrasync\\data\\terrasync.duckdb",
+            "name": "terrasync",
+            "group": "DuckDB"
+        }
+    ]
+}

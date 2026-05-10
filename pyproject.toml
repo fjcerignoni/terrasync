@@ -14,6 +14,7 @@ dependencies = [
     "dbt-duckdb>=1.8",
     "pydantic>=2.0",
     "pyyaml>=6.0",
+    "fiona>=1.9",
 ]
 
 [project.scripts]

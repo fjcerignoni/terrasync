@@ -129,224 +129,49 @@ sources:
     geometry_type: MultiPolygon
 
   incra_sigef_privado:
-    type: wfs
+    type: zip_shapefile
     display_name: "INCRA - SIGEF Privado"
     description: "Imóveis rurais certificados (privados) via SIGEF"
     category: land_use
     group: incra
-    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
-    layer_template: "certificada_sigef_particular_{layer}"
-    layers:
-      - id: ac
-      - id: al
-      - id: am
-      - id: ap
-      - id: ba
-      - id: ce
-      - id: df
-      - id: es
-      - id: go
-      - id: ma
-      - id: mg
-      - id: ms
-      - id: mt
-      - id: pa
-      - id: pb
-      - id: pe
-      - id: pi
-      - id: pr
-      - id: rj
-      - id: rn
-      - id: ro
-      - id: rr
-      - id: rs
-      - id: sc
-      - id: se
-      - id: sp
-      - id: to
-    wfs_version: "1.0.0"
-    use_gml: true
-    max_concurrent: 1
     epsg: 4674
-    extra_params:
-      tema: "certificada_sigef_particular_{layer}"
-    geometry_type: MultiPolygon
+    url: "http://certificacao.incra.gov.br/csv_shp/zip/Sigef%20Privado.zip"
 
   incra_sigef_publico:
-    type: wfs
+    type: zip_shapefile
     display_name: "INCRA - SIGEF Público"
     description: "Imóveis rurais certificados (públicos) via SIGEF"
     category: land_use
     group: incra
-    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
-    layer_template: "certificada_sigef_publico_{layer}"
-    layers:
-      - id: ac
-      - id: al
-      - id: am
-      - id: ap
-      - id: ba
-      - id: ce
-      - id: df
-      - id: es
-      - id: go
-      - id: ma
-      - id: mg
-      - id: ms
-      - id: mt
-      - id: pa
-      - id: pb
-      - id: pe
-      - id: pi
-      - id: pr
-      - id: rj
-      - id: rn
-      - id: ro
-      - id: rr
-      - id: rs
-      - id: sc
-      - id: se
-      - id: sp
-      - id: to
-    wfs_version: "1.0.0"
-    use_gml: true
-    max_concurrent: 1
     epsg: 4674
-    extra_params:
-      tema: "certificada_sigef_publico_{layer}"
-    geometry_type: MultiPolygon
+    url: "http://certificacao.incra.gov.br/csv_shp/zip/Sigef%20P%C3%BAblico.zip"
 
   incra_snci_privado:
-    type: wfs
+    type: zip_shapefile
     display_name: "INCRA - SNCI Privado"
     description: "Imóveis certificados SNCI (privados)"
     category: land_use
     group: incra
-    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
-    layer_template: "imoveiscertificados_privado_{layer}"
-    layers:
-      - id: ac
-      - id: al
-      - id: am
-      - id: ap
-      - id: ba
-      - id: ce
-      - id: df
-      - id: es
-      - id: go
-      - id: ma
-      - id: mg
-      - id: ms
-      - id: mt
-      - id: pa
-      - id: pb
-      - id: pe
-      - id: pi
-      - id: pr
-      - id: rj
-      - id: rn
-      - id: ro
-      - id: rr
-      - id: rs
-      - id: sc
-      - id: se
-      - id: sp
-      - id: to
-    wfs_version: "1.0.0"
-    use_gml: true
-    max_concurrent: 1
     epsg: 4674
-    extra_params:
-      tema: "imoveiscertificados_privado_{layer}"
-    geometry_type: MultiPolygon
+    url: "http://certificacao.incra.gov.br/csv_shp/zip/Im%C3%B3vel%20certificado%20SNCI%20Privado.zip"
 
   incra_snci_publico:
-    type: wfs
+    type: zip_shapefile
     display_name: "INCRA - SNCI Público"
     description: "Imóveis certificados SNCI (públicos)"
     category: land_use
     group: incra
-    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
-    layer_template: "imoveiscertificados_publico_{layer}"
-    layers:
-      - id: ac
-      - id: al
-      - id: am
-      - id: ap
-      - id: ba
-      - id: ce
-      - id: df
-      - id: es
-      - id: go
-      - id: ma
-      - id: mg
-      - id: ms
-      - id: mt
-      - id: pa
-      - id: pb
-      - id: pe
-      - id: pi
-      - id: pr
-      - id: rj
-      - id: rn
-      - id: ro
-      - id: rr
-      - id: rs
-      - id: sc
-      - id: se
-      - id: sp
-      - id: to
-    wfs_version: "1.0.0"
-    use_gml: true
-    max_concurrent: 1
     epsg: 4674
-    extra_params:
-      tema: "imoveiscertificados_publico_{layer}"
-    geometry_type: MultiPolygon
+    url: "http://certificacao.incra.gov.br/csv_shp/zip/Im%C3%B3vel%20certificado%20SNCI%20P%C3%BAblico.zip"
 
   incra_assentamentos:
-    type: wfs
+    type: zip_shapefile
     display_name: "INCRA - Assentamentos"
     description: "Assentamentos da reforma agrária"
     category: boundaries
     group: incra
-    base_url: "https://acervofundiario.incra.gov.br/i3geo/ogc.php"
-    layer_template: "assentamentos_{layer}"
-    layers:
-      - id: ac
-      - id: al
-      - id: am
-      - id: ap
-      - id: ba
-      - id: ce
-      - id: df
-      - id: es
-      - id: go
-      - id: ma
-      - id: mg
-      - id: ms
-      - id: mt
-      - id: pa
-      - id: pb
-      - id: pe
-      - id: pi
-      - id: pr
-      - id: rj
-      - id: rn
-      - id: ro
-      - id: rr
-      - id: rs
-      - id: sc
-      - id: se
-      - id: sp
-      - id: to
-    wfs_version: "1.0.0"
-    use_gml: true
-    max_concurrent: 1
     epsg: 4674
-    extra_params:
-      tema: "assentamentos_{layer}"
-    geometry_type: MultiPolygon
+    url: "http://certificacao.incra.gov.br/csv_shp/zip/Assentamento%20Brasil.zip"
 
   icmbio:
     type: wfs
