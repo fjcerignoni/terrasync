@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/silver/stg_prodes_caatinga.parquet'
+    location='data/staging/stg_prodes_caatinga.parquet'
 ) }}
 
-{{ clean_geometry('data/bronze/prodes_caatinga/*.parquet') }}
+{{ clean_geometry('data/bronze/prodes_caatinga/*.parquet', source_epsg=4674) }}

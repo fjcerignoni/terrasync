@@ -76,6 +76,16 @@ uv run terrasync transform --select stg_funai
 uv run terrasync transform --full-refresh
 ```
 
+### Catalog (DuckDB views)
+
+`ingest` already refreshes the DuckDB catalog at the end of every run. Use this when bronze parquets were added/removed/moved outside the CLI and you need to resync the views:
+
+```bash
+uv run terrasync catalog
+```
+
+This rescans `data/bronze/*/` and recreates the `bronze_{source}_{layer}` views in `data/terrasync.duckdb`.
+
 You can also run dbt directly:
 
 ```bash
@@ -108,8 +118,14 @@ data/
 │   ├── stg_prodes_*.parquet
 │   ├── stg_ana_*.parquet
 │   └── ...
+├── cache/                           # Transient artifacts (ZIP downloads)
+│   └── *.zip                        # auto-removed after parquet success
 └── terrasync.duckdb                 # Catalogue with views over parquet files
 ```
+
+### ZIP source caching
+
+Sources of type `zip_shapefile` keep the downloaded archive at `data/cache/{source}.zip` until the parquet conversion succeeds, then delete it. If the conversion fails, the cached ZIP stays on disk so the next run skips the download. `--reset` clears both the parquet and the cached ZIP.
 
 ## Project structure
 

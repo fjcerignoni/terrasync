@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/silver/stg_sicar.parquet'
+    location='data/staging/stg_sicar.parquet'
 ) }}
 
-{{ clean_geometry('data/bronze/sicar/*.parquet') }}
+{{ clean_geometry('data/bronze/sicar/*.parquet', source_epsg=4674) }}

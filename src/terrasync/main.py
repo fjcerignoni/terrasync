@@ -47,6 +47,13 @@ def _add_transform_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_catalog_parser(subparsers: argparse._SubParsersAction) -> None:
+    subparsers.add_parser(
+        "catalog",
+        help="Refresh DuckDB catalog views over bronze parquet files.",
+    )
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="terrasync — acquire, store and process Brazilian geographic data."
@@ -59,6 +66,7 @@ def _parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
     _add_ingest_parser(subparsers)
     _add_transform_parser(subparsers)
+    _add_catalog_parser(subparsers)
     return parser.parse_args()
 
 
@@ -105,10 +113,10 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
 
 
 def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
-    from .config import SILVER_DIR
+    from .config import STAGING_DIR
     from dbt.cli.main import dbtRunner
 
-    SILVER_DIR.mkdir(parents=True, exist_ok=True)
+    STAGING_DIR.mkdir(parents=True, exist_ok=True)
 
     dbt_args = ["run"]
     if args.full_refresh:
@@ -137,6 +145,9 @@ def run() -> None:
         _run_ingest(args, logger)
     elif args.command == "transform":
         _run_transform(args, logger)
+    elif args.command == "catalog":
+        logger.info("Refreshing DuckDB catalog...")
+        refresh_catalog()
 
 
 if __name__ == "__main__":

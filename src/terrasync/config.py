@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 
 DATA_DIR = Path("data")
 BRONZE_DIR = DATA_DIR / "bronze"
-SILVER_DIR = DATA_DIR / "silver"
+STAGING_DIR = DATA_DIR / "staging"
+CACHE_DIR = DATA_DIR / "cache"
+MANIFESTS_DIR = DATA_DIR / "manifests"
 DUCKDB_PATH = DATA_DIR / "terrasync.duckdb"
 DBT_PROJECT_DIR = Path(".")
 
@@ -119,6 +121,13 @@ class ZipShapefileSource(BaseModel):
 DataSource = WFSSource | ArcGISSource | ZipShapefileSource
 
 
+def source_parquet_path(source: "DataSource", layer_id: str) -> Path:
+    """Canonical path of a layer's parquet inside bronze_dir."""
+    if layer_id == source.name:
+        return source.bronze_dir / f"{layer_id}.parquet"
+    return source.bronze_dir / f"{source.name}_{layer_id}.parquet"
+
+
 class SourceGroup(BaseModel):
     key: str = ""
     name: str = ""
@@ -134,7 +143,7 @@ class SourceGroup(BaseModel):
 def _load_catalog(
     yaml_path: Path = _SOURCES_YAML,
 ) -> tuple[dict[str, DataSource], dict[str, SourceGroup]]:
-    with open(yaml_path) as f:
+    with open(yaml_path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
     sources: dict[str, DataSource] = {}

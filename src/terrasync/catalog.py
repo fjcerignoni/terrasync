@@ -1,9 +1,8 @@
 import logging
-from pathlib import Path
 
 import duckdb
 
-from .config import DUCKDB_PATH, SOURCES, DATA_DIR
+from .config import DATA_DIR, DUCKDB_PATH, SOURCES, source_parquet_path
 
 logger = logging.getLogger("terrasync.catalog")
 
@@ -17,20 +16,29 @@ def refresh_catalog() -> None:
     except duckdb.IOException:
         con.execute("LOAD spatial;")
 
-    for key, source in SOURCES.items():
-        bronze_dir = source.bronze_dir
-        if not bronze_dir.exists():
-            continue
+    stale = con.execute(
+        "SELECT table_name FROM information_schema.views "
+        "WHERE table_schema = current_schema() AND table_name LIKE 'bronze_%'"
+    ).fetchall()
+    for (view_name,) in stale:
+        con.execute(f'DROP VIEW IF EXISTS "{view_name}"')
+    if stale:
+        logger.info("Dropped %d existing bronze_* view(s).", len(stale))
 
-        for parquet_file in sorted(bronze_dir.glob("*.parquet")):
-            layer_id = parquet_file.stem
+    registered = 0
+    for key, source in SOURCES.items():
+        for layer_id in source.layer_ids:
+            parquet_file = source_parquet_path(source, layer_id)
+            if not parquet_file.exists():
+                continue
             view_name = f"bronze_{key}_{layer_id}"
-            abs_path = parquet_file.resolve()
+            abs_path = parquet_file.resolve().as_posix()
             con.execute(
-                f"CREATE OR REPLACE VIEW {view_name} AS "
+                f'CREATE OR REPLACE VIEW "{view_name}" AS '
                 f"SELECT * FROM read_parquet('{abs_path}')"
             )
             logger.debug("Registered view: %s -> %s", view_name, abs_path)
+            registered += 1
 
-    logger.info("Catalog refreshed: %s", DUCKDB_PATH)
+    logger.info("Catalog refreshed: %d view(s) in %s", registered, DUCKDB_PATH)
     con.close()
