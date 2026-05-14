@@ -3,6 +3,9 @@ import sys
 
 
 def setup_logging() -> logging.Logger:
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
         logging.Formatter(
