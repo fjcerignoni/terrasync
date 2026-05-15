@@ -17,14 +17,33 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 - `ST_CoverageClean` **antes** do tiling, nunca depois.
 - Preferir `ST_CoverageUnion` sobre `ST_Union` quando entrada for coverage limpa.
 
+## Layout de pastas (monorepo)
+
+- `apps/terrasync/` — pacote Python (ingestion engine + CLI).
+- `apps/dbt/` — projeto dbt (project, profiles, models, macros, seeds, snapshots, tests, analyses). **`dbt` roda a partir de `apps/dbt/`** (cwd). O CLI in-process já passa `--project-dir`/`--profiles-dir` apontando para essa pasta.
+- `apps/api/`, `apps/web/` — placeholders (futuros).
+- `infra/` — `docker-compose.yml` + `docker/`. **`docker compose` roda a partir de `infra/`** (cwd).
+- `data/` — fica na raiz, gitignored, compartilhado. Resolvido em runtime por `apps/terrasync/paths.py` (Python, via `repo_root()`) e por `{{ var('data_root') }}` em dbt (default `../../data`).
+- `docs/`, `notebooks/`, `pyproject.toml`, `uv.lock`, `CLAUDE.md`, `README.md`, `ai_history.md` na raiz.
+
 ## Convenções
 
 - **Naming dbt**: `stg_*` (staging/DuckDB), `canonical_*` (silver/PostGIS), `tile_*`/`analytical_*`/`mart_*` (gold/PostGIS, futuro).
-- **Adicionar source nova** = editar `src/terrasync/sources.yaml` + criar `stg_*.sql` chamando `{{ clean_geometry('data/bronze/{source}/*.parquet', source_epsg=4674) }}` + criar `stg_*.yml` co-localizado. Não há código Python novo a escrever para WFS/ArcGIS/ZIP padrão.
-- **`clean_geometry` aceita `relation=`** além de `parquet_path`: quando o `stg_*` precisa abrir colunas explicitamente (fonte com schema divergente, ex.: `stg_sicar`), montar um `{% set %}` com o `SELECT` e passar via `clean_geometry(relation=..., source_epsg=...)`. O gateway de staging continua único.
-- **Export de cliente** = `models/exports/<cliente>/<modelo>.sql` (+ `.yml` co-localizado). Recorta o tronco compartilhado (`ref('stg_*')`) para um entregável de cliente; **não é silver**. Materializado `external`, versionado por diretório `v=YYYY-MM-DD` (dbt var `<cliente>_data_version`, default `run_started_at`).
+- **Paths em SQL via macros**, nunca literais. Três macros centralizam o filesystem de dados:
+  - `{{ bronze_path('source') }}` → `../../data/bronze/<source>/*.parquet` (aceita `glob=` para padrão custom).
+  - `{{ staging_path('stg_modelo') }}` → `../../data/staging/<stg_modelo>.parquet` (usar em `location=`).
+  - `{{ export_path('cliente', 'modelo') }}` → `../../data/exports/<cliente>/<modelo>/v=<YYYY-MM-DD>` (versão via `var('<cliente>_data_version')`, default `run_started_at`).
+- **Adicionar source nova** = editar `apps/terrasync/sources.yaml` + criar `apps/dbt/models/staging/stg_*.sql` chamando `{{ clean_geometry(bronze_path('<source>'), source_epsg=4674) }}` + criar `stg_*.yml` co-localizado. Não há código Python novo a escrever para WFS/ArcGIS/ZIP padrão.
+- **`clean_geometry` aceita `relation=`** além de `parquet_path`: quando o `stg_*` precisa abrir colunas explicitamente (fonte com schema divergente, ex.: `stg_sicar`), montar um `{% set %}` com o `SELECT` (usando `{{ bronze_path(...) }}` no `read_parquet`) e passar via `clean_geometry(relation=..., source_epsg=...)`. O gateway de staging continua único.
+- **Export de cliente** = `apps/dbt/models/exports/<cliente>/<modelo>.sql` (+ `.yml` co-localizado). Recorta o tronco compartilhado (`ref('stg_*')`) para um entregável de cliente; **não é silver**. Materializado `external`, `location=export_path('<cliente>', '<modelo>') ~ '/<modelo>.parquet'`.
 - **Sufixo `_calc`** marca coluna gerada pelo sistema (ex.: `area_ha_calc` via `area_ha`), distinta de campo homônimo vindo da fonte.
 - Pandas só no downloader (I/O heterogêneo). Em SQL, preferir DuckDB → PostGIS.
+
+## Comandos
+
+- **CLI Python**: `uv run terrasync ingest|transform|catalog ...` (de qualquer cwd — `paths.repo_root()` resolve absoluto).
+- **dbt direto**: `cd apps/dbt && uv run dbt deps && uv run dbt build --select <modelo>`.
+- **Docker**: `cd infra && docker compose up -d postgres`.
 
 ## Disciplina dbt (não-negociável)
 
