@@ -19,10 +19,24 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 
 ## Convenções
 
-- **Naming dbt**: `stg_*` (staging/DuckDB), `canonical_*` (silver/PostGIS, futuro), `tile_*`/`analytical_*`/`mart_*` (gold/PostGIS, futuro).
-- **Adicionar source nova** = editar `src/terrasync/sources.yaml` + criar `stg_*.sql` chamando `{{ clean_geometry('data/bronze/{source}/*.parquet', source_epsg=4674) }}`. Não há código Python novo a escrever para WFS/ArcGIS/ZIP padrão.
-- `SELECT *` proibido, exceto `SELECT * EXCLUDE (geometry)` em macros que propagam todas as colunas trocando a geometria.
+- **Naming dbt**: `stg_*` (staging/DuckDB), `canonical_*` (silver/PostGIS), `tile_*`/`analytical_*`/`mart_*` (gold/PostGIS, futuro).
+- **Adicionar source nova** = editar `src/terrasync/sources.yaml` + criar `stg_*.sql` chamando `{{ clean_geometry('data/bronze/{source}/*.parquet', source_epsg=4674) }}` + criar `stg_*.yml` co-localizado. Não há código Python novo a escrever para WFS/ArcGIS/ZIP padrão.
+- **`clean_geometry` aceita `relation=`** além de `parquet_path`: quando o `stg_*` precisa abrir colunas explicitamente (fonte com schema divergente, ex.: `stg_sicar`), montar um `{% set %}` com o `SELECT` e passar via `clean_geometry(relation=..., source_epsg=...)`. O gateway de staging continua único.
+- **Export de cliente** = `models/exports/<cliente>/<modelo>.sql` (+ `.yml` co-localizado). Recorta o tronco compartilhado (`ref('stg_*')`) para um entregável de cliente; **não é silver**. Materializado `external`, versionado por diretório `v=YYYY-MM-DD` (dbt var `<cliente>_data_version`, default `run_started_at`).
+- **Sufixo `_calc`** marca coluna gerada pelo sistema (ex.: `area_ha_calc` via `area_ha`), distinta de campo homônimo vindo da fonte.
 - Pandas só no downloader (I/O heterogêneo). Em SQL, preferir DuckDB → PostGIS.
+
+## Disciplina dbt (não-negociável)
+
+- **Cada modelo tem `schema.yml` co-localizado** (mesma pasta, mesmo basename). Declara todas as colunas com `data_type`, `description`, `tests`, `constraints`.
+- **`contract.enforced: true`** é padrão para silver/gold. dbt valida o DDL contra o schema declarado; mismatch falha o run.
+- **PK / FK / NOT NULL** via `constraints:` no schema.yml — dbt gera o DDL no PostGIS.
+- **Índices** declarados via `indexes:` na config do modelo (gist em geom, btree em FKs, gin em arrays).
+- **Testes mínimos por modelo**: `unique` + `not_null` em PK; `relationships` em FK; `not_null` em colunas declaradas NOT NULL; `accepted_range`/`accepted_values` onde aplicável.
+- **`SELECT *` proibido em modelos**. Listar colunas explicitamente sempre. Exceções:
+  - CTE de passagem trivial (renomeação/filtro óbvio) cujo próximo passo enumera.
+  - Macros que propagam colunas (`clean_geometry`) com `SELECT * EXCLUDE (...)` — mantidas pois são genéricas por design.
+- **Pacote `dbt-utils`** disponível em `packages.yml` para `accepted_range`, `unique_combination_of_columns`, etc.
 
 ## Onde achar mais
 

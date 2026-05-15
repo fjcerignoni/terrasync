@@ -1,6 +1,10 @@
-{% macro clean_geometry(parquet_path, source_epsg=4674) %}
+{% macro clean_geometry(parquet_path=none, source_epsg=4674, relation=none) %}
 WITH raw AS (
+    {% if relation is not none -%}
+    {{ relation }}
+    {%- else -%}
     SELECT * FROM read_parquet('{{ parquet_path }}')
+    {%- endif %}
 ),
 validated AS (
     SELECT
@@ -18,7 +22,12 @@ reprojected AS (
         {% if source_epsg == 4326 %}
         geometry_valid AS geometry
         {% else %}
-        ST_Transform(geometry_valid, 'EPSG:{{ source_epsg }}', 'EPSG:4326', always_xy := true) AS geometry
+        ST_Transform(
+            geometry_valid,
+            'EPSG:{{ source_epsg }}',
+            'EPSG:4326',
+            always_xy := true
+        ) AS geometry
         {% endif %}
     FROM validated
 )

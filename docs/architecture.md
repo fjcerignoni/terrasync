@@ -30,35 +30,27 @@ Foco temático: **governança de terra e Código Florestal** — cadastro rural 
 
 ## Arquitetura
 
-```
-┌─────────────┐   ingest    ┌──────────────────┐    catalog    ┌──────────────┐
-│ Fontes      │ ──────────► │ data/bronze/     │ ────────────► │ DuckDB views │
-│ públicas    │   download  │   {source}/      │   register    │ bronze_*     │
-│ (WFS/ArcGIS │   async     │   *.parquet      │               └──────┬───────┘
-│  /ZIP shp)  │             └──────────────────┘                      │
-└─────────────┘                                                       │ read_parquet
-                                                                      ▼
-                                          ┌────────────────────────────────────┐
-                                          │ dbt staging models (stg_*)         │
-                                          │ clean_geometry macro:              │
-                                          │   ST_MakeValid +                   │
-                                          │   ST_CollectionExtract(3) +        │
-                                          │   ST_Multi (saída MULTIPOLYGON) +  │
-                                          │   reprojeção para EPSG:4326 +      │
-                                          │   bounds ±180/±90                  │
-                                          └────────────────┬───────────────────┘
-                                                           │ transform
-                                                           ▼
-                                                ┌────────────────────┐
-                                                │ data/staging/      │
-                                                │   stg_*.parquet    │
-                                                │   (EPSG:4326)      │
-                                                └─────────┬──────────┘
-                                                          │
-                                                          ▼
-                                            [silver — canonical_* (PostGIS)]
-                                            [gold   — tile_*/analytical_*/mart_*]
-                                                  (futuro — ver blueprint)
+```mermaid
+flowchart TD
+    A["Fontes públicas<br/>(WFS / ArcGIS / ZIP shp)"]
+    B["data/bronze/{source}/*.parquet<br/><i>imutável</i>"]
+    C["DuckDB views<br/>bronze_*"]
+    D["dbt staging (stg_*)<br/><b>clean_geometry</b><br/>ST_MakeValid + CollectionExtract(3)<br/>ST_Multi → MULTIPOLYGON<br/>reproj EPSG:4326 + bounds ±180/±90"]
+    E["data/staging/stg_*.parquet<br/>EPSG:4326"]
+    F["silver — canonical_*<br/>(PostGIS)"]
+    G["gold — tile_* / analytical_* / mart_*<br/>(PostGIS)"]
+
+    A -->|"download async"| B
+    B -->|"catalog register"| C
+    C -->|"read_parquet"| D
+    D -->|"transform"| E
+    E -.->|"futuro"| F
+    F -.-> G
+
+    classDef done   fill:#e8f5e9,stroke:#2e7d32,color:#1b1b1b;
+    classDef future fill:#f3e5f5,stroke:#7b1fa2,color:#1b1b1b,stroke-dasharray:5 3;
+    class A,B,C,D,E done;
+    class F,G future;
 ```
 
 Camadas medallion:
@@ -82,6 +74,7 @@ terrasync/
 │   └── area_ha.sql                  # cálculo de área via reprojeção 5880 sob demanda
 ├── models/
 │   ├── staging/                     # 25 stg_*.sql (DuckDB)
+│   ├── exports/<cliente>/           # extrações de cliente (ex.: scw/sicar_opi.sql)
 │   ├── silver/   (futuro)           # canonical_*.sql (PostGIS)
 │   └── gold/     (futuro)           # tile_*/analytical_*/mart_*.sql (PostGIS)
 ├── seeds/
@@ -105,6 +98,7 @@ terrasync/
 ├── data/                            # gerado, gitignored
 │   ├── bronze/                      # raw parquet por source/layer
 │   ├── staging/                     # parquet pós-clean_geometry (EPSG:4326)
+│   ├── exports/<cliente>/           # extrações de cliente, versionadas por v=YYYY-MM-DD
 │   ├── cache/                       # ZIPs transientes
 │   ├── manifests/                   # runs.jsonl — log estruturado de aquisição
 │   └── terrasync.duckdb             # catálogo
@@ -179,6 +173,8 @@ Todos os 25 staging models chamam a mesma macro. Saneamento canônico:
 
 Padronização vence variação. Se uma fonte exigir limpeza diferente, é melhor refletir isso na macro do que pulverizar SQL custom.
 
+A macro aceita um caminho de parquet literal (`parquet_path`) **ou** um parâmetro `relation` — um `SELECT` montado pelo chamador, usado quando o `stg_*` precisa abrir as colunas explicitamente (ex.: `stg_sicar`, cujos estados têm schema divergente). Ambos os caminhos passam pela mesma CTE `raw`; o gateway de saneamento permanece único.
+
 ### CRS canônico: storage 4326, área via 5880
 Geometrias são armazenadas em **EPSG:4326** (graus). Cálculo de área usa **EPSG:5880** (Albers Brasil, equal-area) via macro `area_ha(geom)` sob demanda. Reprojeção em massa para 5880 no storage foi explicitamente recusada: custo > benefício enquanto a área é sob demanda.
 
@@ -193,6 +189,13 @@ Para `zip_shapefile`, o ZIP fica em `data/cache/` *durante* o download e *após*
 
 ### Provenance de aquisição em dois lugares (footer + manifest)
 Cada parquet bronze carrega no **footer key-value** (`terrasync.acquired_at`, `source`, `layer_id`, `endpoint`, `source_epsg`, `n_features`) — metadado vive com o arquivo, zero overhead de schema. Em paralelo, cada tentativa de download (`ok`/`empty`/`failed`) gera uma linha JSON em `data/manifests/runs.jsonl`, consultável via `read_json_auto` no DuckDB. Razão: timestamp por feature violaria bronze imutável e seria desperdício de schema (mesmo valor em milhões de linhas); a aquisição é fato do arquivo, não da feature. Parquets pré-existentes ao patch ficam sem o metadado por design — fabricar uma data retroativa seria gravar dado falso.
+
+### Branches de dados por cliente
+O tronco bronze + staging é **single-tenant compartilhado**: aquisição, validação e projeção de geometria servem a todos. A partir de staging, cada cliente recebe **branches** próprias — modelos de *export* que recortam e moldam o tronco para um entregável. Primeira branch: `scw` (projeto `opi`), com `sicar_opi` — recorte de 11 UFs do SICAR.
+
+Um export **não é silver**: silver (PostGIS, contract enforced) é a canônica topologicamente limpa; export é um corte de cliente de um upstream, materializado como parquet `external` versionado. Hoje `sicar_opi` lê de `stg_sicar`; quando a canônica PostGIS existir, um export equivalente lerá dela.
+
+Versionamento por diretório particionado: `data/exports/<cliente>/<modelo>/v=YYYY-MM-DD/<modelo>.parquet`, dirigido pela dbt var `<cliente>_data_version` (default `run_started_at`). Histórico imutável, glob-readable, "latest" = maior `v=`.
 
 ### Notebook ao invés de viewer web
 Foi prototipado um subcomando `terrasync view` com Leaflet HTML e descartado. Razão: notebook (folium + jupyter) já cobre exploração ad-hoc sem manter código de UI. Sem viewer module.

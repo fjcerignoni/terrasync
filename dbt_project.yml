@@ -18,3 +18,10 @@ models:
   terrasync:
     staging:
       +materialized: external
+    silver:
+      +materialized: table
+      +schema: silver
+      +contract:
+        enforced: true
+    exports:
+      +materialized: external

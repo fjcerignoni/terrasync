@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: sicar_opi
+    description: >-
+      Export do cliente scw / projeto opi. Recorte das 11 UFs do SICAR
+      (AC, AM, RO, AP, MT, GO, DF, TO, MA, PA, RR) sobre o staging compartilhado
+      stg_sicar — geometria validada e projetada em EPSG:4326. Materializado como
+      parquet versionado em data/exports/scw/sicar_opi/v=YYYY-MM-DD/.
+    columns:
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: >-
+          Código do imóvel rural no CAR. A fonte SICAR contém duplicatas raras
+          (2 no recorte, 20 no staging completo); o export deduplica mantendo
+          a linha mais recente por COALESCE(data_atualizacao, dat_criacao) —
+          ver comentário do modelo. Chave única após dedup.
+        tests:
+          - not_null
+          - unique
+      - name: status_imovel
+        data_type: VARCHAR
+        description: Situação cadastral do imóvel no SICAR.
+      - name: dat_criacao
+        data_type: VARCHAR
+        description: Data de criação do registro no SICAR (texto, como vem da fonte).
+      - name: data_atualizacao
+        data_type: VARCHAR
+        description: Data da última atualização do registro (texto, como vem da fonte).
+      - name: area
+        data_type: DOUBLE
+        description: >-
+          Área declarada na fonte (SICAR). Frequentemente um registro burocrático,
+          não a área geoespacial real — use area_ha_calc para área de geometria.
+      - name: condicao
+        data_type: VARCHAR
+        description: Condição do imóvel no fluxo de análise do CAR.
+      - name: uf
+        data_type: VARCHAR
+        description: Unidade federativa do imóvel. Restrito às 11 UFs do recorte scw/opi.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['AC', 'AM', 'AP', 'DF', 'GO', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO']
+      - name: municipio
+        data_type: VARCHAR
+        description: Nome do município do imóvel.
+      - name: cod_municipio_ibge
+        data_type: BIGINT
+        description: Código IBGE do município.
+      - name: m_fiscal
+        data_type: DOUBLE
+        description: Número de módulos fiscais do imóvel.
+      - name: tipo_imovel
+        data_type: VARCHAR
+        description: "Tipo do imóvel rural (ex.: assentamento, área urbana consolidada)."
+      - name: area_ha_calc
+        data_type: DOUBLE
+        description: >-
+          Área em hectares computada pelo sistema a partir da geometria, via
+          reprojeção equal-area EPSG:5880 (macro area_ha). Sufixo _calc marca campo
+          gerado — distinto de `area`, que vem da fonte.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON do imóvel em EPSG:4326.
+        tests:
+          - not_null

@@ -112,11 +112,46 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
     refresh_catalog()
 
 
+def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
+    """Pre-create parent dirs for every `materialized=external` model.
+
+    DuckDB's COPY TO does not create nested parent directories. For locations
+    like `data/exports/<client>/<model>/v=<date>/...`, the run fails with an
+    IO Error if the dir doesn't already exist. We parse the project first,
+    walk the manifest, and `mkdir -p` each external model's parent.
+    """
+    import json
+    from pathlib import Path
+
+    parse_res = runner.invoke(["parse", "--profiles-dir", ".", "--project-dir", "."])
+    if not parse_res.success:
+        return  # let `dbt run` surface the same parse error
+
+    manifest_path = Path("target") / "manifest.json"
+    if not manifest_path.exists():
+        return
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for node in manifest.get("nodes", {}).values():
+        if node.get("resource_type") != "model":
+            continue
+        cfg = node.get("config", {}) or {}
+        if cfg.get("materialized") != "external":
+            continue
+        location = cfg.get("location")
+        if not location:
+            continue
+        parent = Path(location).parent
+        if parent and not parent.exists():
+            logger.info("Pre-creating output dir for %s: %s", node.get("name"), parent)
+            parent.mkdir(parents=True, exist_ok=True)
+
+
 def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
-    from .config import STAGING_DIR
     from dbt.cli.main import dbtRunner
 
-    STAGING_DIR.mkdir(parents=True, exist_ok=True)
+    runner = dbtRunner()
+    _ensure_external_dirs(runner, logger)
 
     dbt_args = ["run"]
     if args.full_refresh:
@@ -127,7 +162,7 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     dbt_args.extend(["--project-dir", "."])
 
     logger.info("Running: dbt %s", " ".join(dbt_args))
-    res = dbtRunner().invoke(dbt_args)
+    res = runner.invoke(dbt_args)
     if not res.success:
         logger.error("dbt run failed.")
         raise SystemExit(1)
