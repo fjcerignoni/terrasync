@@ -46,6 +46,12 @@ groups:
     sources:
       - sfb
 
+  ibge:
+    name: "IBGE - Malhas Territoriais"
+    description: "Malhas digitais oficiais (municípios, UFs, etc.)"
+    sources:
+      - ibge_municipios
+
 # ---------------------------------------------------------------------------
 # WFS Sources
 # ---------------------------------------------------------------------------
@@ -172,6 +178,15 @@ sources:
     group: incra
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Assentamento%20Brasil.zip"
+
+  ibge_municipios:
+    type: zip_shapefile
+    display_name: "IBGE - Municípios 2025"
+    description: "Malha digital municipal (BR_Municipios_2025) — base para outline de UFs e canonical_municipios futuro"
+    category: boundaries
+    group: ibge
+    epsg: 4674
+    url: "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2025/Brasil/BR_Municipios_2025.zip"
 
   icmbio:
     type: wfs

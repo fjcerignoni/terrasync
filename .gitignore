@@ -12,3 +12,10 @@ dbt_packages/
 logs/
 
 ai_history.md
+
+# postgres / docker
+.env
+pgdata/
+
+# claude code local state
+.claude/

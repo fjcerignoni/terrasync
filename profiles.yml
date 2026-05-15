@@ -6,3 +6,12 @@ terrasync:
       path: "data/terrasync.duckdb"
       extensions:
         - spatial
+    postgres:
+      type: postgres
+      host: "{{ env_var('PGHOST', 'localhost') }}"
+      port: "{{ env_var('PGPORT', 5432) | int }}"
+      user: "{{ env_var('PGUSER', 'terrasync') }}"
+      password: "{{ env_var('PGPASSWORD', 'terrasync') }}"
+      dbname: "{{ env_var('PGDATABASE', 'terrasync') }}"
+      schema: silver
+      threads: 4
