@@ -14,7 +14,7 @@ services:
       - "${PGPORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./data/staging:/data/staging:ro
+      - ../data/staging:/data/staging:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-terrasync} -d ${PGDATABASE:-terrasync}"]
       interval: 10s
