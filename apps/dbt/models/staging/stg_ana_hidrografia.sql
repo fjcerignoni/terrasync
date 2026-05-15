@@ -3,4 +3,4 @@
     location=staging_path('stg_ana_hidrografia')
 ) }}
 
-{{ clean_geometry(bronze_path('ana', 'hidrografia.parquet'), source_epsg=4674) }}
+{{ clean_geometry(bronze_path('ana', 'ana_hidrografia.parquet'), source_epsg=4674) }}

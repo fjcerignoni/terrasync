@@ -3,4 +3,4 @@
     location=staging_path('stg_sfb_concessoes')
 ) }}
 
-{{ clean_geometry(bronze_path('sfb', 'concessoes.parquet'), source_epsg=4674) }}
+{{ clean_geometry(bronze_path('sfb', 'sfb_concessoes.parquet'), source_epsg=4674) }}
