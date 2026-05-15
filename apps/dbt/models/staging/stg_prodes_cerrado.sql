@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_prodes_cerrado.parquet'
+    location=staging_path('stg_prodes_cerrado')
 ) }}
 
-{{ clean_geometry('data/bronze/prodes_cerrado/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('prodes_cerrado'), source_epsg=4674) }}

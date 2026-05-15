@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_deter_cerrado.parquet'
+    location=staging_path('stg_deter_cerrado')
 ) }}
 
-{{ clean_geometry('data/bronze/deter_cerrado/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('deter_cerrado'), source_epsg=4674) }}

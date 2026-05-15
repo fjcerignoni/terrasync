@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_incra_quilombolas.parquet'
+    location=staging_path('stg_incra_quilombolas')
 ) }}
 
-{{ clean_geometry('data/bronze/incra_quilombolas/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('incra_quilombolas'), source_epsg=4674) }}

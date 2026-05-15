@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_sfb_concessoes.parquet'
+    location=staging_path('stg_sfb_concessoes')
 ) }}
 
-{{ clean_geometry('data/bronze/sfb/concessoes.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('sfb', 'concessoes.parquet'), source_epsg=4674) }}

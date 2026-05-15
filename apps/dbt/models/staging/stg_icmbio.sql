@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_icmbio.parquet'
+    location=staging_path('stg_icmbio')
 ) }}
 
-{{ clean_geometry('data/bronze/icmbio/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('icmbio'), source_epsg=4674) }}

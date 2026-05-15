@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_deter_amazonia.parquet'
+    location=staging_path('stg_deter_amazonia')
 ) }}
 
-{{ clean_geometry('data/bronze/deter_amazonia/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('deter_amazonia'), source_epsg=4674) }}

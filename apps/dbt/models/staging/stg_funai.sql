@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_funai.parquet'
+    location=staging_path('stg_funai')
 ) }}
 
-{{ clean_geometry('data/bronze/funai/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('funai'), source_epsg=4674) }}

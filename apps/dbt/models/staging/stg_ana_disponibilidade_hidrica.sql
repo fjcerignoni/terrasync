@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_ana_disponibilidade_hidrica.parquet'
+    location=staging_path('stg_ana_disponibilidade_hidrica')
 ) }}
 
-{{ clean_geometry('data/bronze/ana/disponibilidade_hidrica.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('ana', 'disponibilidade_hidrica.parquet'), source_epsg=4674) }}

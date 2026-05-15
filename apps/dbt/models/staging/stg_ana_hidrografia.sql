@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_ana_hidrografia.parquet'
+    location=staging_path('stg_ana_hidrografia')
 ) }}
 
-{{ clean_geometry('data/bronze/ana/hidrografia.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('ana', 'hidrografia.parquet'), source_epsg=4674) }}

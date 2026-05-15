@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_ana_pivos_irrigacao.parquet'
+    location=staging_path('stg_ana_pivos_irrigacao')
 ) }}
 
-{{ clean_geometry('data/bronze/ana/pivos_irrigacao.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('ana', 'pivos_irrigacao.parquet'), source_epsg=4674) }}

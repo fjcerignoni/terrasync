@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_sicar.parquet'
+    location=staging_path('stg_sicar')
 ) }}
 
 -- Colunas abertas explicitamente: SICAR tem schema divergente entre UFs.
@@ -24,7 +24,7 @@ SELECT
     m_fiscal,
     tipo_imovel,
     geometry
-FROM read_parquet('data/bronze/sicar/*.parquet', union_by_name = true)
+FROM read_parquet('{{ bronze_path("sicar") }}', union_by_name = true)
 {% endset %}
 
 {{ clean_geometry(relation=sicar_source, source_epsg=4674) }}

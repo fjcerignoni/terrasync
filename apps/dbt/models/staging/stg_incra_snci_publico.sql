@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_incra_snci_publico.parquet'
+    location=staging_path('stg_incra_snci_publico')
 ) }}
 
-{{ clean_geometry('data/bronze/incra_snci_publico/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('incra_snci_publico'), source_epsg=4674) }}

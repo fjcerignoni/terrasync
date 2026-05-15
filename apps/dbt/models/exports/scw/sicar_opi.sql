@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/exports/scw/sicar_opi/v=' ~ var('scw_data_version', run_started_at.strftime('%Y-%m-%d')) ~ '/sicar_opi.parquet'
+    location=export_path('scw', 'sicar_opi')
 ) }}
 
 -- Export do cliente scw / projeto opi.

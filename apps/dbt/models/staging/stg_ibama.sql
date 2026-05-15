@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_ibama.parquet'
+    location=staging_path('stg_ibama')
 ) }}
 
-{{ clean_geometry('data/bronze/ibama/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('ibama'), source_epsg=4674) }}

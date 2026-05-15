@@ -1,6 +1,6 @@
 {{ config(
     materialized='external',
-    location='data/staging/stg_incra_sigef_privado.parquet'
+    location=staging_path('stg_incra_sigef_privado')
 ) }}
 
-{{ clean_geometry('data/bronze/incra_sigef_privado/*.parquet', source_epsg=4674) }}
+{{ clean_geometry(bronze_path('incra_sigef_privado'), source_epsg=4674) }}
