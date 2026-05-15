@@ -6,6 +6,7 @@ from .catalog import refresh_catalog
 from .config import SOURCES, SOURCE_GROUPS, resolve_sources
 from .downloader import download_all
 from .logging_config import setup_logging
+from .paths import DBT_DIR, DBT_TARGET
 
 _VALID_SOURCE_CHOICES = sorted(set(list(SOURCES) + list(SOURCE_GROUPS) + ["all"]))
 
@@ -123,11 +124,12 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
     import json
     from pathlib import Path
 
-    parse_res = runner.invoke(["parse", "--profiles-dir", ".", "--project-dir", "."])
+    dbt_dir = str(DBT_DIR)
+    parse_res = runner.invoke(["parse", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir])
     if not parse_res.success:
         return  # let `dbt run` surface the same parse error
 
-    manifest_path = Path("target") / "manifest.json"
+    manifest_path = DBT_TARGET / "manifest.json"
     if not manifest_path.exists():
         return
 
@@ -141,7 +143,10 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
         location = cfg.get("location")
         if not location:
             continue
-        parent = Path(location).parent
+        loc_path = Path(location)
+        if not loc_path.is_absolute():
+            loc_path = (DBT_DIR / loc_path).resolve()
+        parent = loc_path.parent
         if parent and not parent.exists():
             logger.info("Pre-creating output dir for %s: %s", node.get("name"), parent)
             parent.mkdir(parents=True, exist_ok=True)
@@ -158,8 +163,9 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
         dbt_args.append("--full-refresh")
     if args.select:
         dbt_args.extend(["--select", args.select])
-    dbt_args.extend(["--profiles-dir", "."])
-    dbt_args.extend(["--project-dir", "."])
+    dbt_dir = str(DBT_DIR)
+    dbt_args.extend(["--profiles-dir", dbt_dir])
+    dbt_args.extend(["--project-dir", dbt_dir])
 
     logger.info("Running: dbt %s", " ".join(dbt_args))
     res = runner.invoke(dbt_args)

@@ -6,13 +6,14 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field
 
-DATA_DIR = Path("data")
+from .paths import DATA_DIR, DBT_DIR
+
 BRONZE_DIR = DATA_DIR / "bronze"
 STAGING_DIR = DATA_DIR / "staging"
 CACHE_DIR = DATA_DIR / "cache"
 MANIFESTS_DIR = DATA_DIR / "manifests"
 DUCKDB_PATH = DATA_DIR / "terrasync.duckdb"
-DBT_PROJECT_DIR = Path(".")
+DBT_PROJECT_DIR = DBT_DIR
 
 _SOURCES_YAML = Path(__file__).parent / "sources.yaml"
 
