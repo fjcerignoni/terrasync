@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import logging
+import sys
+from pathlib import Path
 
 from .catalog import refresh_catalog
 from .config import SOURCES, SOURCE_GROUPS, resolve_sources
@@ -55,6 +57,19 @@ def _add_catalog_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_status_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser(
+        "status",
+        help="Launch the Streamlit observability dashboard (requires extra 'dashboard').",
+    )
+    p.add_argument("--port", type=int, default=8501, help="Port for the Streamlit server.")
+    p.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Do not open a browser window automatically.",
+    )
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="terrasync — acquire, store and process Brazilian geographic data."
@@ -68,6 +83,7 @@ def _parse_args() -> argparse.Namespace:
     _add_ingest_parser(subparsers)
     _add_transform_parser(subparsers)
     _add_catalog_parser(subparsers)
+    _add_status_parser(subparsers)
     return parser.parse_args()
 
 
@@ -175,6 +191,29 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     logger.info("Transform finished.")
 
 
+def _run_status(args: argparse.Namespace, logger: logging.Logger) -> None:
+    try:
+        from streamlit.web import cli as stcli
+    except ImportError:
+        logger.error(
+            "streamlit não instalado. Rode: uv sync --extra dashboard"
+        )
+        raise SystemExit(1)
+
+    app_path = Path(__file__).parent / "dashboard" / "app.py"
+    sys.argv = [
+        "streamlit",
+        "run",
+        str(app_path),
+        "--browser.gatherUsageStats=false",
+        f"--server.port={args.port}",
+    ]
+    if args.no_browser:
+        sys.argv.append("--server.headless=true")
+    logger.info("Launching dashboard at http://localhost:%d", args.port)
+    sys.exit(stcli.main())
+
+
 def run() -> None:
     args = _parse_args()
     logger = setup_logging()
@@ -189,6 +228,8 @@ def run() -> None:
     elif args.command == "catalog":
         logger.info("Refreshing DuckDB catalog...")
         refresh_catalog()
+    elif args.command == "status":
+        _run_status(args, logger)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,11 @@ dependencies = [
     "fiona>=1.9",
 ]
 
+[project.optional-dependencies]
+dashboard = [
+    "streamlit>=1.30",
+]
+
 [project.scripts]
 terrasync = "terrasync.main:run"
 
