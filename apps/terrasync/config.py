@@ -31,6 +31,9 @@ class LayerMeta(BaseModel):
     service_path: str | None = None  # ArcGIS only
 
 
+Cadence = Literal["daily", "weekly", "monthly", "quarterly", "yearly", "unknown"]
+
+
 class WFSSource(BaseModel):
     type: Literal["wfs"] = "wfs"
     name: str = ""
@@ -39,6 +42,7 @@ class WFSSource(BaseModel):
     category: str = "boundaries"
     group: str | None = None
     temporal: bool = False
+    cadence: Cadence = "unknown"
     base_url: str
     layer_template: str
     layers: list[LayerMeta]
@@ -77,6 +81,7 @@ class ArcGISSource(BaseModel):
     description: str = ""
     category: str = "boundaries"
     group: str | None = None
+    cadence: Cadence = "unknown"
     base_url: str
     layers: list[LayerMeta]
     max_record_count: int = 1000
@@ -105,6 +110,7 @@ class ZipShapefileSource(BaseModel):
     description: str = ""
     category: str = "boundaries"
     group: str | None = None
+    cadence: Cadence = "unknown"
     epsg: int = 4674
     url: str
 

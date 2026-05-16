@@ -2708,6 +2708,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dashboard = [
+    { name = "httpx" },
     { name = "streamlit" },
 ]
 
@@ -2726,6 +2727,7 @@ requires-dist = [
     { name = "fiona", specifier = ">=1.9" },
     { name = "geopandas", specifier = ">=0.14" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'dashboard'", specifier = ">=0.27" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "psycopg2-binary", specifier = ">=2.9" },
     { name = "pyarrow", specifier = ">=15.0" },

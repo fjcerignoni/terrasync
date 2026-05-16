@@ -8,6 +8,7 @@ from typing import Any
 
 from ..config import SOURCES, DataSource
 from ..manifest import read_parquet_metadata
+from .cadence import age_status as _cadence_age_status
 
 
 def _layer_id_from_path(source: DataSource, path: Path) -> str:
@@ -32,17 +33,6 @@ def _age_days(acquired_at: str | None) -> float | None:
     return delta.total_seconds() / 86400.0
 
 
-def _age_status_global(age_days: float | None) -> str:
-    """Threshold global (refinado por source na Fase 4)."""
-    if age_days is None:
-        return "gray"
-    if age_days > 90:
-        return "red"
-    if age_days > 30:
-        return "yellow"
-    return "green"
-
-
 def scan_bronze() -> list[dict[str, Any]]:
     """One row per parquet found under data/bronze/<source>/."""
     rows: list[dict[str, Any]] = []
@@ -62,15 +52,17 @@ def scan_bronze() -> list[dict[str, Any]]:
                 n_features = int(meta.get("n_features", 0))
             except ValueError:
                 n_features = 0
+            cadence = getattr(source, "cadence", "unknown")
             rows.append(
                 {
                     "source": source.name,
                     "layer": _layer_id_from_path(source, parquet),
                     "category": source.category,
                     "group": source.group or source.name,
+                    "cadence": cadence,
                     "acquired_at": acquired_at,
                     "age_days": age,
-                    "age_status": _age_status_global(age),
+                    "age_status": _cadence_age_status(age, cadence),
                     "n_features": n_features,
                     "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
                     "endpoint": meta.get("endpoint", ""),
