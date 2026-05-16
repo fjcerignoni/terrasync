@@ -86,12 +86,26 @@ uv run terrasync catalog
 
 This rescans `data/bronze/*/` and recreates the `bronze_{source}_{layer}` views in `data/terrasync.duckdb`.
 
-You can also run dbt directly:
+You can also run dbt directly from the dbt project directory:
 
 ```bash
-dbt run --profiles-dir . --project-dir .
-dbt run -s stg_funai --profiles-dir . --project-dir .
+cd apps/dbt
+uv run dbt deps
+uv run dbt run
+uv run dbt run -s stg_funai
 ```
+
+### Postgres (infra)
+
+The PostGIS container (used by future silver/gold layers) lives under `infra/`:
+
+```bash
+cd infra
+docker compose up -d postgres
+docker compose down
+```
+
+The compose file bind-mounts `../data/staging` read-only at `/data/staging` inside the container so PostGIS can read staging parquets via `pg_parquet`.
 
 ## Data layout
 
@@ -111,13 +125,14 @@ data/
 │   ├── deter_amazonia/*.parquet
 │   ├── ana/*.parquet                # one file per layer
 │   └── sfb/*.parquet
-├── silver/                          # Cleaned data (dbt staging models)
+├── staging/                         # Cleaned data (dbt staging models, EPSG:4326)
 │   ├── stg_sicar.parquet
 │   ├── stg_funai.parquet
 │   ├── stg_incra_*.parquet
 │   ├── stg_prodes_*.parquet
 │   ├── stg_ana_*.parquet
 │   └── ...
+├── exports/<client>/                # Per-client extracts (versioned v=YYYY-MM-DD)
 ├── cache/                           # Transient artifacts (ZIP downloads)
 │   └── *.zip                        # auto-removed after parquet success
 └── terrasync.duckdb                 # Catalogue with views over parquet files
@@ -131,18 +146,34 @@ Sources of type `zip_shapefile` keep the downloaded archive at `data/cache/{sour
 
 ```
 ├── pyproject.toml
-├── dbt_project.yml          # dbt project config
-├── profiles.yml             # dbt DuckDB profile
-├── models/staging/          # 25 dbt staging models (bronze → silver)
-├── macros/                  # dbt macros (clean_geometry)
-├── src/terrasync/
-│   ├── sources.yaml         # Declarative source catalog (all sources, groups, metadata)
-│   ├── config.py            # Pydantic models + YAML loader + resolve_sources()
-│   ├── downloader.py        # Unified async download (WFS + ArcGIS REST) → Parquet
-│   ├── catalog.py           # DuckDB catalogue refresh
-│   ├── logging_config.py    # Logging setup
-│   └── main.py              # CLI entrypoint (ingest / transform)
+├── uv.lock
+├── apps/
+│   ├── terrasync/           # Python ingestion engine + CLI
+│   │   ├── sources.yaml     # Declarative source catalog
+│   │   ├── config.py        # Pydantic models + YAML loader
+│   │   ├── paths.py         # repo_root() + DATA_DIR + DBT_DIR (cwd-independent)
+│   │   ├── downloader/      # WFS (JSON/GML) + ArcGIS REST + ZIP shapefile strategies
+│   │   ├── catalog.py       # DuckDB catalogue refresh
+│   │   ├── manifest.py      # Acquisition log (parquet footer + runs.jsonl)
+│   │   ├── logging_config.py
+│   │   └── main.py          # CLI entrypoint (ingest / transform / catalog)
+│   ├── dbt/                 # dbt project (run `dbt` from here)
+│   │   ├── dbt_project.yml
+│   │   ├── profiles.yml
+│   │   ├── packages.yml
+│   │   ├── macros/          # clean_geometry, area_ha, bronze_path, staging_path, export_path
+│   │   └── models/
+│   │       ├── staging/     # 25 dbt staging models (bronze → staging)
+│   │       └── exports/     # per-client extracts (e.g. scw/sicar_opi)
+│   ├── api/                 # placeholder (future HTTP API)
+│   └── web/                 # placeholder (future frontend)
+├── infra/
+│   ├── docker-compose.yml   # run `docker compose` from here
+│   └── docker/postgres/     # PostGIS + pg_parquet image
+└── data/                    # shared, gitignored
 ```
+
+The CLI (`uv run terrasync ...`) works from any cwd: `apps/terrasync/paths.py:repo_root()` walks up to `pyproject.toml` and resolves `data/` and `apps/dbt/` absolutely.
 
 ## Source groups
 

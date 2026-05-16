@@ -34,10 +34,10 @@ porque os outros tipos de coverage são derivados mais simples.
 - [dbt_project.yml](../dbt_project.yml) — bloco `models.terrasync.silver` com `+materialized: table`, `+schema: silver`, `+contract.enforced: true`.
 
 ### Docker stack (criado, **não buildado** ainda)
-- [docker-compose.yml](../docker-compose.yml) — service `postgres`, volume `pgdata`, monta `./data/staging:/data/staging:ro`.
-- [docker/postgres/Dockerfile](../docker/postgres/Dockerfile) — base `postgis/postgis:16-3.5` + build de `pg_parquet 0.3.0` via `cargo-pgrx 0.12.5`. Build pesado (~10–15 min na primeira vez).
-- [docker/postgres/init/10-extensions.sql](../docker/postgres/init/10-extensions.sql) — cria `postgis`, `postgis_topology`, `pg_parquet`, schema `silver`.
-- [docker/postgres/postgresql.conf](../docker/postgres/postgresql.conf) — tuning piloto (`work_mem=512MB`, `maintenance_work_mem=2GB`, `shared_buffers=2GB`).
+- [infra/docker-compose.yml](../infra/docker-compose.yml) — service `postgres`, volume `pgdata`, monta `../data/staging:/data/staging:ro`. Roda de `infra/`.
+- [infra/docker/postgres/Dockerfile](../infra/docker/postgres/Dockerfile) — base `postgis/postgis:16-3.5` + build de `pg_parquet 0.3.0` via `cargo-pgrx 0.12.5`. Build pesado (~10–15 min na primeira vez).
+- [infra/docker/postgres/init/10-extensions.sql](../infra/docker/postgres/init/10-extensions.sql) — cria `postgis`, `postgis_topology`, `pg_parquet`, schema `silver`.
+- [infra/docker/postgres/postgresql.conf](../infra/docker/postgres/postgresql.conf) — tuning piloto (`work_mem=512MB`, `maintenance_work_mem=2GB`, `shared_buffers=2GB`).
 - [.env.example](../.env.example), `.gitignore` atualizado (`.env`, `pgdata/`).
 
 ### Bronze pronto
@@ -47,7 +47,7 @@ porque os outros tipos de coverage são derivados mais simples.
 - Catálogo DuckDB refrescado (36 views `bronze_*`).
 
 ### Source nova registrada
-- [src/terrasync/sources.yaml](../src/terrasync/sources.yaml) — entradas `groups.ibge` e `sources.ibge_municipios` (`zip_shapefile`, EPSG:4674).
+- [apps/terrasync/sources.yaml](../apps/terrasync/sources.yaml) — entradas `groups.ibge` e `sources.ibge_municipios` (`zip_shapefile`, EPSG:4674).
 
 ---
 
@@ -60,12 +60,12 @@ porque os outros tipos de coverage são derivados mais simples.
 
 1. Rodar `uv sync` para puxar `dbt-postgres` + `psycopg2-binary` (não foi feito).
 2. Rodar `dbt deps` para instalar `dbt-utils`.
-3. Criar [models/staging/stg_ibge_municipios.sql](../models/staging/stg_ibge_municipios.sql) + `.yml`:
-   - Usar macro [macros/clean_geometry.sql](../macros/clean_geometry.sql) sobre `data/bronze/ibge/*.parquet`, `source_epsg=4674`.
+3. Criar [apps/dbt/models/staging/stg_ibge_municipios.sql](../apps/dbt/models/staging/stg_ibge_municipios.sql) + `.yml`:
+   - Usar macro [apps/dbt/macros/clean_geometry.sql](../apps/dbt/macros/clean_geometry.sql) sobre `{{ bronze_path('ibge') }}`, `source_epsg=4674`.
    - SELECT final **explícito**: `cd_mun, nm_mun, sigla_uf, geometry`.
    - schema.yml com tests `not_null` + `unique` em `cd_mun`, `not_null` em `geometry`.
-4. Criar [models/staging/stg_sicar_pilot.sql](../models/staging/stg_sicar_pilot.sql) + `.yml`:
-   - Lê SICAR via `read_parquet('data/bronze/sicar/*.parquet', filename=true)`.
+4. Criar [apps/dbt/models/staging/stg_sicar_pilot.sql](../apps/dbt/models/staging/stg_sicar_pilot.sql) + `.yml`:
+   - Lê SICAR via `read_parquet('{{ bronze_path("sicar") }}', filename=true)`.
    - `regexp_extract(filename, 'sicar_(\w+)\.parquet', 1) AS uf`.
    - Filtra `WHERE uf IN ('sp','se')`.
    - Aplica `clean_geometry` (atenção: a macro hoje recebe path literal — pode ser preciso refatorar para aceitar CTE intermediária, ou inlinar a lógica de validação).

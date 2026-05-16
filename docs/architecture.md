@@ -62,50 +62,67 @@ Camadas medallion:
 | **silver** (futuro) | canônico, sem topologia inválida | PostGIS schema `silver` | PostGIS `ST_Coverage*` |
 | **gold** (futuro) | overlays por tile/UF/bioma, marts | PostGIS schema `gold` | PostGIS |
 
-## Estrutura de pastas
+## Estrutura de pastas (monorepo)
 
 ```
 terrasync/
-├── pyproject.toml                   # uv-managed
-├── dbt_project.yml                  # dbt project
-├── profiles.yml                     # DuckDB profile com extensão spatial
-├── macros/
-│   ├── clean_geometry.sql           # gateway de staging: MakeValid + reprojeção 4326 + bounds
-│   └── area_ha.sql                  # cálculo de área via reprojeção 5880 sob demanda
-├── models/
-│   ├── staging/                     # 25 stg_*.sql (DuckDB)
-│   ├── exports/<cliente>/           # extrações de cliente (ex.: scw/sicar_opi.sql)
-│   ├── silver/   (futuro)           # canonical_*.sql (PostGIS)
-│   └── gold/     (futuro)           # tile_*/analytical_*/mart_*.sql (PostGIS)
-├── seeds/
-│   └── layer_registry.csv (futuro)  # fonte única de metadados das layers
-├── src/terrasync/
-│   ├── sources.yaml                 # catálogo declarativo (única fonte da verdade)
-│   ├── config.py                    # pydantic models + loader + resolve_sources()
-│   ├── downloader/                  # pacote: 3 estratégias + dispatcher
-│   │   ├── __init__.py              # API pública: download_all, download_layer
-│   │   ├── orchestrator.py          # dispatch por tipo de source
-│   │   ├── wfs_json.py              # WFS paginação JSON + per-layer dispatcher
-│   │   ├── wfs_gml.py               # WFS GML (i3geo) + wfs_base_params
-│   │   ├── arcgis.py                # ArcGIS REST FeatureServer
-│   │   ├── zip_shp.py               # ZIP shapefile com cache
-│   │   └── io.py                    # filesystem/SSL helpers (todos os side effects)
-│   ├── catalog.py                   # registra views bronze_{source}_{layer}
-│   ├── manifest.py                  # acquisition log: footer metadata + runs.jsonl
-│   ├── main.py                      # CLI: ingest / transform / catalog
-│   └── logging_config.py
-├── notebooks/explorer.ipynb         # exploração com folium
-├── data/                            # gerado, gitignored
+├── pyproject.toml                   # uv-managed; descobre apps/terrasync via [tool.hatch.build.targets.wheel]
+├── uv.lock
+├── apps/
+│   ├── terrasync/                   # pacote Python (ingestion engine + CLI)
+│   │   ├── paths.py                 # repo_root() + DATA_DIR + DBT_DIR (cwd-independente)
+│   │   ├── config.py                # pydantic models + loader + resolve_sources()
+│   │   ├── sources.yaml             # catálogo declarativo (única fonte da verdade)
+│   │   ├── main.py                  # CLI: ingest / transform / catalog
+│   │   ├── catalog.py               # registra views bronze_{source}_{layer}
+│   │   ├── manifest.py              # acquisition log: footer metadata + runs.jsonl
+│   │   ├── logging_config.py
+│   │   └── downloader/              # pacote: 3 estratégias + dispatcher
+│   │       ├── __init__.py          # API pública: download_all, download_layer
+│   │       ├── orchestrator.py      # dispatch por tipo de source
+│   │       ├── wfs_json.py          # WFS paginação JSON
+│   │       ├── wfs_gml.py           # WFS GML (i3geo)
+│   │       ├── arcgis.py            # ArcGIS REST FeatureServer
+│   │       ├── zip_shp.py           # ZIP shapefile com cache
+│   │       └── io.py                # filesystem/SSL helpers
+│   ├── dbt/                         # projeto dbt (cwd para `dbt` direto)
+│   │   ├── dbt_project.yml          # var: data_root = ../../data
+│   │   ├── profiles.yml             # DuckDB profile (path: ../../data/terrasync.duckdb)
+│   │   ├── packages.yml
+│   │   ├── macros/
+│   │   │   ├── clean_geometry.sql   # gateway de staging
+│   │   │   ├── area_ha.sql          # área via EPSG:5880 sob demanda
+│   │   │   ├── bronze_path.sql      # {{ bronze_path('source') }} → ../../data/bronze/<source>/*.parquet
+│   │   │   ├── staging_path.sql     # {{ staging_path('stg_X') }} → ../../data/staging/stg_X.parquet
+│   │   │   └── export_path.sql      # {{ export_path('cliente', 'modelo') }} → ../../data/exports/.../v=YYYY-MM-DD
+│   │   ├── models/
+│   │   │   ├── staging/             # 25 stg_*.sql (DuckDB)
+│   │   │   ├── exports/<cliente>/   # ex.: scw/sicar_opi.sql
+│   │   │   ├── silver/  (futuro)    # canonical_*.sql (PostGIS)
+│   │   │   └── gold/    (futuro)    # tile_*/analytical_*/mart_*.sql (PostGIS)
+│   │   ├── seeds/    snapshots/    tests/    analyses/
+│   ├── api/  (placeholder)          # futuro: API HTTP
+│   └── web/  (placeholder)          # futuro: frontend JS/React
+├── infra/
+│   ├── docker-compose.yml           # cwd para `docker compose`; volume ../data/staging
+│   └── docker/postgres/             # Dockerfile + init/10-extensions.sql + postgresql.conf
+├── data/                            # gerado, gitignored — recurso compartilhado
 │   ├── bronze/                      # raw parquet por source/layer
 │   ├── staging/                     # parquet pós-clean_geometry (EPSG:4326)
 │   ├── exports/<cliente>/           # extrações de cliente, versionadas por v=YYYY-MM-DD
 │   ├── cache/                       # ZIPs transientes
 │   ├── manifests/                   # runs.jsonl — log estruturado de aquisição
 │   └── terrasync.duckdb             # catálogo
-└── docs/
-    ├── architecture.md              # este arquivo
-    └── blueprint_geo_pipeline.md    # referência canônica do alvo silver/gold
+├── docs/
+│   ├── architecture.md              # este arquivo
+│   └── blueprint_geo_pipeline.md    # referência canônica do alvo silver/gold
+├── notebooks/                       # exploração com folium (vazio hoje)
+├── CLAUDE.md
+├── README.md
+└── ai_history.md
 ```
+
+**Estratégia de paths** — modelos SQL nunca escrevem `data/...` literal. Três macros (`bronze_path`, `staging_path`, `export_path`) emitem `{{ var('data_root') }}/...` com `data_root: "../../data"` (relativo a `apps/dbt/`, cwd do dbt). No Python, `apps/terrasync/paths.py:repo_root()` sobe a árvore até achar `pyproject.toml` e expõe `DATA_DIR`, `DBT_DIR`, `DBT_TARGET` absolutos — CLI funciona de qualquer cwd. `_ensure_external_dirs` em `main.py` resolve as `location`s relativas do manifest contra `DBT_DIR` antes de `mkdir`.
 
 ## Modelos de dados de fonte (pydantic)
 
@@ -121,7 +138,7 @@ Cada source pode pertencer a um **group** (ex.: `incra`, `prodes`, `deter`). Gro
 
 ## Fontes (20 sources)
 
-Detalhes completos em [../src/terrasync/sources.yaml](../src/terrasync/sources.yaml).
+Detalhes completos em [../apps/terrasync/sources.yaml](../apps/terrasync/sources.yaml).
 
 | Categoria | Sources |
 |-----------|---------|
@@ -243,10 +260,11 @@ Gerenciador: `uv` (lockfile em `uv.lock`, dependencies em `pyproject.toml`). Pyt
 
 ## Como adicionar uma fonte nova
 
-1. Editar `src/terrasync/sources.yaml` com a entrada da source (tipo, endpoint, layers, paginação, EPSG, geometry_type).
+1. Editar `apps/terrasync/sources.yaml` com a entrada da source (tipo, endpoint, layers, paginação, EPSG, geometry_type).
 2. Se for nova categoria de fonte, talvez registrar um `group`.
-3. Criar `models/staging/stg_{source}.sql` chamando `{{ clean_geometry('data/bronze/{source}/*.parquet', source_epsg=4674) }}` (ajustar `source_epsg` se a fonte declarar SRID diferente em `sources.yaml`).
-4. Rodar `uv run terrasync ingest --source <novo>` para validar.
-5. Rodar `uv run terrasync transform --select stg_<novo>` para validar limpeza.
+3. Criar `apps/dbt/models/staging/stg_{source}.sql` chamando `{{ clean_geometry(bronze_path('{source}'), source_epsg=4674) }}` (ajustar `source_epsg` se a fonte declarar SRID diferente em `sources.yaml`).
+4. Criar `apps/dbt/models/staging/stg_{source}.yml` co-localizado.
+5. Rodar `uv run terrasync ingest --source <novo>` para validar.
+6. Rodar `uv run terrasync transform --select stg_<novo>` para validar limpeza.
 
 Não há código novo a escrever para WFS, ArcGIS REST ou ZIP shapefile padrão — só YAML + SQL.
