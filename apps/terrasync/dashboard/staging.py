@@ -2,7 +2,7 @@
 
 Mapping bronze ↔ staging is by textual convention: `stg_<source>[_<layer>].parquet`
 corresponds to one source under `data/bronze/<source>/`. Longest source-name
-prefix wins (so `stg_ana_demanda_irrigacao` resolves to source `ana`).
+prefix wins (so `stg_incra_sigef_privado` resolves to source `incra_sigef_privado`).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def _list_dbt_staging_models() -> list[str]:
 
 
 def _resolve_source_for_model(model: str) -> str | None:
-    """`stg_ana_demanda_irrigacao` → `ana`; `stg_sicar` → `sicar`.
+    """`stg_incra_sigef_privado` → `incra_sigef_privado`; `stg_sicar` → `sicar`.
 
     Longest-prefix match against known source names. Returns None if no source
     name is a prefix of the model basename after stripping `stg_`.

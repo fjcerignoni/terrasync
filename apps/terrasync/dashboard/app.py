@@ -3,8 +3,9 @@
 Tabs:
     - Visão geral: KPIs do pipeline.
     - Bronze health: linha por (source, layer) com freshness + counts.
-    - Staging health: linha por modelo stg_*, geom quality on-demand.
+    - Staging health: linha por modelo stg_*, geom quality + dbt status.
     - Run history: últimas execuções de `runs.jsonl`.
+    - Queries: SQL operacional do dashboard, auditável e executável on-demand.
 """
 
 from __future__ import annotations
@@ -14,10 +15,13 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from terrasync.config import SOURCE_GROUPS, SOURCES
+from terrasync.config import BRONZE_DIR, SOURCE_GROUPS, SOURCES, STAGING_DIR
+from terrasync.dashboard import dbt_artifacts
 from terrasync.dashboard.bronze import scan_bronze
 from terrasync.dashboard.probe import ProbeResult, probe_all
 from terrasync.dashboard.queries import (
+    _connect,
+    _SQL_DIR,
     actual_row_count,
     geom_health,
     validate_geometries,
@@ -26,6 +30,14 @@ from terrasync.dashboard.runs import read_runs, runs_mtime
 from terrasync.dashboard.staging import scan_staging
 
 _PROBE_EMOJI = {"up": "✓", "slow": "⚠", "down": "✗", "unknown": "?"}
+_DBT_STATUS_EMOJI = {
+    "success": "✓",
+    "pass": "✓",
+    "fail": "✗",
+    "error": "✗",
+    "skipped": "⊘",
+    "warn": "⚠",
+}
 
 st.set_page_config(
     page_title="terrasync · status",
@@ -36,18 +48,54 @@ st.set_page_config(
 _STATUS_EMOJI = {"green": "🟢", "yellow": "🟡", "red": "🔴", "gray": "⚪"}
 
 
+_ALL = "(todas)"
+
+
+def _filter_entries() -> list[tuple[str, str]]:
+    """Flat, deduplicated list of (key, label) for the sidebar.
+
+    Each entry filters a unique set of bronze rows. A group whose single
+    member has the same name (e.g. `ana`/`ana`) appears once as the group;
+    sources that don't belong to any group appear once as standalone.
+    """
+    in_a_group: set[str] = set()
+    for grp in SOURCE_GROUPS.values():
+        in_a_group.update(grp.sources)
+
+    entries: list[tuple[str, str]] = []
+    for g in SOURCE_GROUPS.keys():
+        n = len(SOURCE_GROUPS[g].sources)
+        label = f"{g} ({n})" if n > 1 else g
+        entries.append((g, label))
+    for name in SOURCES.keys():
+        if name not in in_a_group:
+            entries.append((name, name))
+
+    entries.sort(key=lambda kv: kv[1].lower())
+    return entries
+
+
 def _sidebar_filter() -> str | None:
     st.sidebar.markdown("### Filtros")
-    options = ["(todas)", *sorted(SOURCE_GROUPS.keys())]
-    choice = st.sidebar.selectbox("Agência / grupo", options, index=0)
-    return None if choice == "(todas)" else choice
+    entries = _filter_entries()
+    keys = [_ALL, *[k for k, _ in entries]]
+    labels = {_ALL: _ALL, **{k: lbl for k, lbl in entries}}
+    choice = st.sidebar.selectbox(
+        "Agência / source",
+        keys,
+        index=0,
+        format_func=lambda k: labels[k],
+    )
+    return None if choice == _ALL else choice
 
 
-def _filter_rows(rows: list[dict], group: str | None) -> list[dict]:
-    if group is None:
+def _filter_rows(rows: list[dict], selection: str | None) -> list[dict]:
+    if selection is None:
         return rows
-    group_sources = set(SOURCE_GROUPS[group].sources)
-    return [r for r in rows if r["source"] in group_sources]
+    if selection in SOURCE_GROUPS:
+        group_sources = set(SOURCE_GROUPS[selection].sources)
+        return [r for r in rows if r["source"] in group_sources]
+    return [r for r in rows if r["source"] == selection]
 
 
 def _tab_overview(bronze_rows: list[dict], runs_df: pd.DataFrame) -> None:
@@ -84,17 +132,18 @@ def _tab_overview(bronze_rows: list[dict], runs_df: pd.DataFrame) -> None:
     c7.metric("Runs OK (24h)", f"{ok_pct}%" if ok_pct is not None else "—")
 
 
-def _ensure_probe_results(group: str | None) -> dict[str, ProbeResult]:
+def _ensure_probe_results(selection: str | None) -> dict[str, ProbeResult]:
     """Lazy probe on first open; manual re-probe clears the cache."""
     state_key = "probe_results"
     if state_key not in st.session_state:
         st.session_state[state_key] = {}
 
-    sources = (
-        [SOURCES[k] for k in SOURCE_GROUPS[group].sources]
-        if group is not None
-        else list(SOURCES.values())
-    )
+    if selection is None:
+        sources = list(SOURCES.values())
+    elif selection in SOURCE_GROUPS:
+        sources = [SOURCES[k] for k in SOURCE_GROUPS[selection].sources]
+    else:
+        sources = [SOURCES[selection]]
 
     cached: dict[str, ProbeResult] = st.session_state[state_key]
     missing = [s for s in sources if s.name not in cached]
@@ -175,17 +224,38 @@ def _tab_bronze(rows: list[dict], group: str | None) -> None:
         )
 
 
+def _format_deps(deps: list[str], limit: int = 3) -> str:
+    if not deps:
+        return ""
+    if len(deps) <= limit:
+        return ", ".join(deps)
+    return f"{', '.join(deps[:limit])}, +{len(deps) - limit}"
+
+
 def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
     st.subheader("Staging health")
     st.caption(
         "Uma linha por modelo `stg_*` em `apps/dbt/models/staging/`. "
         "Modelos não materializados aparecem em cinza. "
-        "Geometrias validadas sob demanda (cacheado por mtime)."
+        "Coluna `dbt status` reflete o último `dbt build`; geometrias validadas sob demanda."
     )
 
     if not staging_rows:
         st.info("Nenhum modelo staging encontrado.")
         return
+
+    models = dbt_artifacts.model_summary()
+    if models:
+        rr_ts = dbt_artifacts.run_results_generated_at()
+        mf_ts = dbt_artifacts.manifest_generated_at()
+        st.info(
+            f"dbt manifest: `{mf_ts or '—'}` · última build: `{rr_ts or '—'}`"
+        )
+    else:
+        st.warning(
+            "Manifest dbt ausente em `apps/dbt/target/manifest.json`. "
+            "Rode `cd apps/dbt && uv run dbt build` para popular status/tests."
+        )
 
     bronze_by_source: dict[str, int] = {}
     for r in bronze_rows:
@@ -194,8 +264,38 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
     built = [r for r in staging_rows if r["built"]]
     not_built = [r for r in staging_rows if not r["built"]]
 
+    def _dbt_cells(model: str) -> dict:
+        info = models.get(model)
+        if info is None:
+            return {
+                "dbt status": "—",
+                "dbt duration (s)": None,
+                "tests": "",
+                "deps": "",
+            }
+        status = info.last_run_status
+        status_cell = _DBT_STATUS_EMOJI.get(status, "—") if status else "—"
+        duration = (
+            round(info.last_run_duration_s, 2)
+            if info.last_run_duration_s is not None
+            else None
+        )
+        if info.test_count == 0:
+            tests_cell = ""
+        else:
+            tests_cell = f"{info.tests_passed}/{info.test_count}"
+            if info.tests_failed:
+                tests_cell += f" ✗{info.tests_failed}"
+        return {
+            "dbt status": status_cell,
+            "dbt duration (s)": duration,
+            "tests": tests_cell,
+            "deps": _format_deps(info.depends_on),
+        }
+
     display: list[dict] = []
     for r in staging_rows:
+        dbt_cells = _dbt_cells(r["model"])
         if r["built"]:
             stats = geom_health(r["path"], r["mtime"])
             rows = stats["rows"]
@@ -210,6 +310,7 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
                     "n_null_geom": stats["n_null_geom"],
                     "n_empty_geom": stats["n_empty_geom"],
                     "size (MB)": r["file_size_mb"],
+                    **dbt_cells,
                 }
             )
         else:
@@ -223,6 +324,7 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
                     "n_null_geom": None,
                     "n_empty_geom": None,
                     "size (MB)": None,
+                    **dbt_cells,
                 }
             )
 
@@ -346,26 +448,92 @@ def _tab_runs(df: pd.DataFrame) -> None:
     st.dataframe(durations, hide_index=True, use_container_width=False)
 
 
+def _list_known_parquets() -> list[str]:
+    """All parquets currently on disk under data/staging and data/bronze."""
+    paths: list[Path] = []
+    if STAGING_DIR.exists():
+        paths.extend(sorted(STAGING_DIR.glob("*.parquet")))
+    if BRONZE_DIR.exists():
+        paths.extend(sorted(BRONZE_DIR.glob("*/*.parquet")))
+    return [str(p) for p in paths]
+
+
+def _list_sql_files() -> list[Path]:
+    if not _SQL_DIR.exists():
+        return []
+    return sorted(p for p in _SQL_DIR.glob("*.sql") if not p.name.startswith("_"))
+
+
+def _tab_queries() -> None:
+    st.subheader("Queries")
+    st.caption(
+        "SQL operacional do dashboard. Edite o arquivo `.sql` e dê refresh para "
+        "ver mudanças. Parâmetros posicionais (`?`) são preenchidos pelos campos abaixo."
+    )
+
+    sql_files = _list_sql_files()
+    if not sql_files:
+        st.info(f"Nenhum `.sql` em `{_SQL_DIR}`.")
+        return
+
+    names = [p.stem for p in sql_files]
+    choice = st.selectbox("Query", names, key="queries_choice")
+    target = next(p for p in sql_files if p.stem == choice)
+    sql_text = target.read_text(encoding="utf-8")
+
+    st.code(sql_text, language="sql")
+    st.caption(f"Arquivo: `{target.relative_to(target.parents[3])}`")
+
+    n_params = sql_text.count("?")
+    parquets = _list_known_parquets()
+
+    params: list[str] = []
+    if n_params > 0 and not parquets:
+        st.warning("Nenhum parquet encontrado em `data/staging/` ou `data/bronze/`.")
+        return
+
+    for i in range(n_params):
+        params.append(
+            st.selectbox(
+                f"Parâmetro {i + 1} (path do parquet)",
+                parquets,
+                key=f"queries_param_{choice}_{i}",
+            )
+        )
+
+    if st.button("Run", key=f"queries_run_{choice}"):
+        con = _connect()
+        try:
+            df = con.execute(sql_text, params).fetchdf()
+            st.dataframe(df, hide_index=True, use_container_width=True)
+        except Exception as exc:
+            st.error(f"Erro ao executar: {exc}")
+        finally:
+            con.close()
+
+
 def main() -> None:
     st.title("terrasync · status")
     st.caption(Path.cwd().as_posix())
 
-    group = _sidebar_filter()
-    bronze_rows = _filter_rows(scan_bronze(), group)
+    selection = _sidebar_filter()
+    bronze_rows = _filter_rows(scan_bronze(), selection)
     staging_rows = scan_staging()
     runs_df = read_runs(runs_mtime())
 
-    tab_overview, tab_bronze, tab_staging, tab_runs = st.tabs(
-        ["Visão geral", "Bronze health", "Staging health", "Run history"]
+    tab_overview, tab_bronze, tab_staging, tab_runs, tab_queries = st.tabs(
+        ["Visão geral", "Bronze health", "Staging health", "Run history", "Queries"]
     )
     with tab_overview:
         _tab_overview(bronze_rows, runs_df)
     with tab_bronze:
-        _tab_bronze(bronze_rows, group)
+        _tab_bronze(bronze_rows, selection)
     with tab_staging:
         _tab_staging(staging_rows, bronze_rows)
     with tab_runs:
         _tab_runs(runs_df)
+    with tab_queries:
+        _tab_queries()
 
 
 main()

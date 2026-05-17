@@ -2,12 +2,24 @@
 
 Each query opens a fresh in-memory DuckDB (with spatial loaded) to avoid
 contention with the persistent `data/terrasync.duckdb` file used by `transform`.
+
+SQL bodies live in `sql/*.sql` — edit the file, refresh the dashboard.
 """
 
 from __future__ import annotations
 
+import functools
+from pathlib import Path
+
 import duckdb
 import streamlit as st
+
+_SQL_DIR = Path(__file__).parent / "sql"
+
+
+@functools.cache
+def _load_sql(name: str) -> str:
+    return (_SQL_DIR / f"{name}.sql").read_text(encoding="utf-8")
 
 
 def _connect() -> duckdb.DuckDBPyConnection:
@@ -19,15 +31,18 @@ def _connect() -> duckdb.DuckDBPyConnection:
     return con
 
 
+def _has_geom(con: duckdb.DuckDBPyConnection, parquet_path: str) -> bool:
+    cols = con.execute(_load_sql("_describe_columns"), [parquet_path]).fetchall()
+    return any(c[0] == "geom" for c in cols)
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def actual_row_count(parquet_path: str, mtime: float) -> int:
     """Real row count via DuckDB. mtime invalidates cache when file is rewritten."""
     del mtime  # only used for cache key
     con = _connect()
     try:
-        result = con.execute(
-            "SELECT COUNT(*) FROM read_parquet(?)", [parquet_path]
-        ).fetchone()
+        result = con.execute(_load_sql("actual_row_count"), [parquet_path]).fetchone()
         return int(result[0]) if result else 0
     finally:
         con.close()
@@ -42,26 +57,12 @@ def geom_health(parquet_path: str, mtime: float) -> dict[str, int]:
     del mtime
     con = _connect()
     try:
-        cols = con.execute(
-            "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
-            [parquet_path],
-        ).fetchall()
-        has_geom = any(c[0] == "geom" for c in cols)
-        if not has_geom:
+        if not _has_geom(con, parquet_path):
             (total,) = con.execute(
-                "SELECT COUNT(*) FROM read_parquet(?)", [parquet_path]
+                _load_sql("actual_row_count"), [parquet_path]
             ).fetchone()
             return {"rows": int(total), "n_null_geom": 0, "n_empty_geom": 0}
-        row = con.execute(
-            """
-            SELECT
-                COUNT(*),
-                COUNT(*) FILTER (WHERE geom IS NULL),
-                COUNT(*) FILTER (WHERE geom IS NOT NULL AND ST_IsEmpty(geom))
-            FROM read_parquet(?)
-            """,
-            [parquet_path],
-        ).fetchone()
+        row = con.execute(_load_sql("geom_health"), [parquet_path]).fetchone()
         return {
             "rows": int(row[0]),
             "n_null_geom": int(row[1]),
@@ -77,22 +78,9 @@ def validate_geometries(parquet_path: str, mtime: float) -> dict[str, int]:
     del mtime
     con = _connect()
     try:
-        cols = con.execute(
-            "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet(?))",
-            [parquet_path],
-        ).fetchall()
-        has_geom = any(c[0] == "geom" for c in cols)
-        if not has_geom:
+        if not _has_geom(con, parquet_path):
             return {"n_invalid": 0, "checked": 0}
-        row = con.execute(
-            """
-            SELECT
-                COUNT(*) FILTER (WHERE geom IS NOT NULL),
-                COUNT(*) FILTER (WHERE geom IS NOT NULL AND NOT ST_IsValid(geom))
-            FROM read_parquet(?)
-            """,
-            [parquet_path],
-        ).fetchone()
+        row = con.execute(_load_sql("validate_geometries"), [parquet_path]).fetchone()
         return {"checked": int(row[0]), "n_invalid": int(row[1])}
     finally:
         con.close()

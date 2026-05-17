@@ -129,7 +129,7 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
     refresh_catalog()
 
 
-def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
+def _ensure_external_dirs(runner, logger: logging.Logger, vars_override: str | None = None) -> None:
     """Pre-create parent dirs for every `materialized=external` model.
 
     DuckDB's COPY TO does not create nested parent directories. For locations
@@ -141,7 +141,10 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
     from pathlib import Path
 
     dbt_dir = str(DBT_DIR)
-    parse_res = runner.invoke(["parse", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir])
+    parse_cmd = ["parse", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir]
+    if vars_override:
+        parse_cmd.extend(["--vars", vars_override])
+    parse_res = runner.invoke(parse_cmd)
     if not parse_res.success:
         return  # let `dbt run` surface the same parse error
 
@@ -169,10 +172,19 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
 
 
 def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
+    import json
+    import os
+
     from dbt.cli.main import dbtRunner
+    from .config import DATA_DIR, DUCKDB_PATH
+
+    # Injeta paths absolutas — dbtRunner resolve paths relativas contra o cwd do
+    # processo (não contra --project-dir), então não podemos depender de relativos.
+    os.environ["TERRASYNC_DUCKDB_PATH"] = str(DUCKDB_PATH)
+    vars_override = json.dumps({"data_root": DATA_DIR.as_posix()})
 
     runner = dbtRunner()
-    _ensure_external_dirs(runner, logger)
+    _ensure_external_dirs(runner, logger, vars_override)
 
     dbt_args = ["run"]
     if args.full_refresh:
@@ -182,6 +194,7 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     dbt_dir = str(DBT_DIR)
     dbt_args.extend(["--profiles-dir", dbt_dir])
     dbt_args.extend(["--project-dir", dbt_dir])
+    dbt_args.extend(["--vars", vars_override])
 
     logger.info("Running: dbt %s", " ".join(dbt_args))
     res = runner.invoke(dbt_args)
