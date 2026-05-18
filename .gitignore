@@ -6,12 +6,14 @@ build/
 .venv/
 data/
 
+
 # dbt
 target/
 dbt_packages/
 logs/
 .user.yml
 
+docs/
 ai_history.md
 
 # postgres / docker
