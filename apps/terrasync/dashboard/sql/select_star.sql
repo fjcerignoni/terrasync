@@ -1,0 +1,1 @@
+SELECT * EXCLUDE geometry FROM read_parquet(?) LIMIT 10

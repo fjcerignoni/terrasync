@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_incra_snci
+    description: >-
+      Staging unificado do SNCI (Sistema Nacional de Certificação de Imóveis),
+      combinando imóveis privados e públicos certificados pelo INCRA. Campo tipo
+      discrimina a origem. cod_imovel e num_certif não são únicos (recertificações
+      geram duplicatas). Geometrias em EPSG:4326.
+    columns:
+      - name: tipo
+        data_type: VARCHAR
+        description: Origem do imóvel — 'privado' ou 'publico', derivado do filename bronze.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['privado', 'publico']
+      - name: num_proces
+        data_type: VARCHAR
+        description: Número do processo administrativo INCRA. Permite NULL (17 registros sem processo na fonte).
+      - name: sr
+        data_type: VARCHAR
+        description: Superintendência Regional do INCRA responsável.
+      - name: num_certif
+        data_type: VARCHAR
+        description: Número do certificado de imóvel rural. Quase-único (73 dups em 53K — recertificações).
+      - name: data_certi
+        data_type: TIMESTAMP
+        description: Data de emissão do certificado.
+      - name: qtd_area_p
+        data_type: VARCHAR
+        description: Área do imóvel conforme certificação (string da fonte, não numérico).
+      - name: cod_profis
+        data_type: VARCHAR
+        description: Código do profissional responsável pela certificação.
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: Código do imóvel rural no cadastro INCRA. Não-único (50K distinct em 53K total).
+      - name: nome_imove
+        data_type: VARCHAR
+        description: Nome do imóvel rural conforme cadastro.
+      - name: uf_municip
+        data_type: VARCHAR
+        description: Concatenação de UF e município (string da fonte).
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON do imóvel em EPSG:4326.
+        tests:
+          - not_null

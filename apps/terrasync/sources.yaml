@@ -34,11 +34,11 @@ groups:
       - deter_amazonia
       - deter_cerrado
 
-  ana:
-    name: "ANA - Agência Nacional de Águas"
-    description: "Dados hídricos e de irrigação"
-    sources:
-      - ana
+#  ana:
+#    name: "ANA - Agência Nacional de Águas"
+#    description: "Dados hídricos e de irrigação"
+#    sources:
+#      - ana
 
   sfb:
     name: "SFB - Serviço Florestal Brasileiro"
@@ -52,6 +52,12 @@ groups:
     sources:
       - ibge_municipios
 
+  mma:
+    name: "MMA - Ministério do Meio Ambiente"
+    description: "Cadastro Nacional de Unidades de Conservação (federais + estaduais + municipais)"
+    sources:
+      - mma
+
 # ---------------------------------------------------------------------------
 # WFS Sources
 # ---------------------------------------------------------------------------
@@ -61,7 +67,8 @@ sources:
     type: wfs
     display_name: "SICAR - CAR"
     description: "Cadastro Ambiental Rural por UF"
-    category: land_use
+    category: land_tenure
+    cadence: daily
     base_url: "https://geoserver.car.gov.br/geoserver/sicar/ows"
     layer_template: "sicar:sicar_imoveis_{layer}"
     layers:
@@ -103,6 +110,7 @@ sources:
     display_name: "FUNAI - Terras Indígenas"
     description: "Terras indígenas demarcadas (polígonos)"
     category: boundaries
+    cadence: quarterly
     base_url: "https://geoserver.funai.gov.br/geoserver/Funai/ows"
     layer_template: "Funai:{layer}"
     layers:
@@ -120,8 +128,9 @@ sources:
     type: wfs
     display_name: "INCRA - Quilombolas"
     description: "Áreas quilombolas reconhecidas"
-    category: boundaries
+    category: land_tenure
     group: incra
+    cadence: yearly
     base_url: "https://cmr.funai.gov.br/geoserver/ows"
     layer_template: "CMR-PUBLICO:{layer}"
     layers:
@@ -138,8 +147,9 @@ sources:
     type: zip_shapefile
     display_name: "INCRA - SIGEF Privado"
     description: "Imóveis rurais certificados (privados) via SIGEF"
-    category: land_use
+    category: land_tenure
     group: incra
+    cadence: weekly
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Sigef%20Privado.zip"
 
@@ -147,8 +157,9 @@ sources:
     type: zip_shapefile
     display_name: "INCRA - SIGEF Público"
     description: "Imóveis rurais certificados (públicos) via SIGEF"
-    category: land_use
+    category: land_tenure
     group: incra
+    cadence: weekly
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Sigef%20P%C3%BAblico.zip"
 
@@ -156,8 +167,9 @@ sources:
     type: zip_shapefile
     display_name: "INCRA - SNCI Privado"
     description: "Imóveis certificados SNCI (privados)"
-    category: land_use
+    category: land_tenure
     group: incra
+    cadence: yearly
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Im%C3%B3vel%20certificado%20SNCI%20Privado.zip"
 
@@ -165,8 +177,9 @@ sources:
     type: zip_shapefile
     display_name: "INCRA - SNCI Público"
     description: "Imóveis certificados SNCI (públicos)"
-    category: land_use
+    category: land_tenure
     group: incra
+    cadence: yearly
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Im%C3%B3vel%20certificado%20SNCI%20P%C3%BAblico.zip"
 
@@ -174,8 +187,9 @@ sources:
     type: zip_shapefile
     display_name: "INCRA - Assentamentos"
     description: "Assentamentos da reforma agrária"
-    category: boundaries
+    category: land_tenure
     group: incra
+    cadence: yearly
     epsg: 4674
     url: "http://certificacao.incra.gov.br/csv_shp/zip/Assentamento%20Brasil.zip"
 
@@ -185,42 +199,66 @@ sources:
     description: "Malha digital municipal (BR_Municipios_2025) — base para outline de UFs e canonical_municipios futuro"
     category: boundaries
     group: ibge
+    cadence: yearly
     epsg: 4674
     url: "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2025/Brasil/BR_Municipios_2025.zip"
 
-  icmbio:
-    type: wfs
-    display_name: "ICMBio - Unidades de Conservação"
-    description: "Limites das unidades de conservação federais"
-    category: environmental
-    base_url: "https://geoservicos.inde.gov.br/geoserver/ICMBio/ows"
-    layer_template: "ICMBio:{layer}"
-    layers:
-      - id: limiteucsfederais_a
-        name: "UCs Federais"
-        geometry_type: MultiPolygon
-    wfs_version: "1.1.0"
-    page_size: 100000
-    max_concurrent: 1
+  mma:
+    type: zip_shapefile
+    display_name: "MMA - CNUC (Unidades de Conservação)"
+    description: >-
+      Cadastro Nacional de Unidades de Conservação — federais, estaduais
+      e municipais. Fonte manual: baixar o ZIP mais recente do dados.gov.br
+      e colocar em data/cache/ preservando o nome original
+      (ex.: mma_cnuc_2026_03.zip).
+    category: land_tenure
+    group: mma
+    cadence: quarterly
     epsg: 4674
-    geometry_type: MultiPolygon
+    manual: true
+    layer_id: cnuc
+    encoding: ISO-8859-1
+    url: "https://dados.gov.br/dados/conjuntos-dados/unidadesdeconservacao"
 
-  ibama:
-    type: wfs
-    display_name: "IBAMA - Embargos"
-    description: "Áreas embargadas por infração ambiental"
-    category: environmental
-    base_url: "https://siscom.ibama.gov.br/geoserver/wfs"
-    layer_template: "publica:{layer}"
-    layers:
-      - id: vw_brasil_adm_embargo_a
-        name: "Embargos Ambientais"
-        geometry_type: MultiPolygon
-    wfs_version: "2.0.0"
-    page_size: 50000
-    max_concurrent: 1
-    epsg: 4674
-    geometry_type: MultiPolygon
+#  icmbio:
+#    type: wfs
+#    display_name: "ICMBio - Unidades de Conservação"
+#    description: "Limites das unidades de conservação federais"
+#    category: land_tenure
+#    cadence: quarterly
+#    # Substituído por `mma:` (zip manual). O WFS do INDE usa cert assinado
+#    # pela AC Raiz ICP-Brasil, que o bundle certifi não confia — quebra com
+#    # CERTIFICATE_VERIFY_FAILED em Linux/Docker. O CNUC do MMA é
+#    # estritamente mais abrangente (federais + estaduais + municipais).
+#    base_url: "https://geoservicos.inde.gov.br/geoserver/ICMBio/ows"
+#    layer_template: "ICMBio:{layer}"
+#    layers:
+#      - id: limiteucsfederais_a
+#        name: "UCs Federais"
+#        geometry_type: MultiPolygon
+#    wfs_version: "1.1.0"
+#    page_size: 100000
+#    max_concurrent: 1
+#    epsg: 4674
+#    geometry_type: MultiPolygon
+
+#  ibama:
+#    type: wfs
+#    display_name: "IBAMA - Embargos"
+#    description: "Áreas embargadas por infração ambiental"
+#    category: compliance
+#    cadence: monthly
+#    base_url: "https://siscom.ibama.gov.br/geoserver/wfs"
+#    layer_template: "publica:{layer}"
+#    layers:
+#      - id: vw_brasil_adm_embargo_a
+#        name: "Embargos Ambientais"
+#        geometry_type: MultiPolygon
+#    wfs_version: "2.0.0"
+#    page_size: 50000
+#    max_concurrent: 1
+#    epsg: 4674
+#    geometry_type: MultiPolygon
 
   prodes_amazonia:
     type: wfs
@@ -229,6 +267,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-amazon-nb/ows"
     layer_template: "prodes-amazon-nb:{layer}"
     layers:
@@ -240,6 +279,7 @@ sources:
     page_size: 50000
     max_concurrent: 1
     epsg: 4674
+    sort_by: uid  # layer has no PK; required for startIndex pagination
     geometry_type: MultiPolygon
 
   prodes_cerrado:
@@ -249,6 +289,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-cerrado-nb/ows"
     layer_template: "prodes-cerrado-nb:{layer}"
     layers:
@@ -269,6 +310,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-caatinga-nb/ows"
     layer_template: "prodes-caatinga-nb:{layer}"
     layers:
@@ -289,6 +331,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-mata-atlantica-nb/ows"
     layer_template: "prodes-mata-atlantica-nb:{layer}"
     layers:
@@ -309,6 +352,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-pantanal-nb/ows"
     layer_template: "prodes-pantanal-nb:{layer}"
     layers:
@@ -329,6 +373,7 @@ sources:
     category: deforestation
     group: prodes
     temporal: true
+    cadence: yearly
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/prodes-pampa-nb/ows"
     layer_template: "prodes-pampa-nb:{layer}"
     layers:
@@ -349,6 +394,7 @@ sources:
     category: deforestation
     group: deter
     temporal: true
+    cadence: daily
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/deter-amz/ows"
     layer_template: "deter-amz:{layer}"
     layers:
@@ -369,6 +415,7 @@ sources:
     category: deforestation
     group: deter
     temporal: true
+    cadence: daily
     base_url: "https://terrabrasilis.dpi.inpe.br/geoserver/deter-cerrado-nb/ows"
     layer_template: "deter-cerrado-nb:{layer}"
     layers:
@@ -386,33 +433,34 @@ sources:
   # ArcGIS REST Sources
   # -------------------------------------------------------------------------
 
-  ana:
-    type: arcgis
-    display_name: "ANA - Águas"
-    description: "Dados da Agência Nacional de Águas e Saneamento Básico"
-    category: environmental
-    group: ana
-    base_url: "https://portal1.snirh.gov.br/server/rest/services/dados_abertos"
-    layers:
-      - id: hidrografia
-        name: "Hidrografia"
-        service_path: "Hidrografia/FeatureServer/0"
-        geometry_type: MultiLineString
-      - id: pivos_irrigacao
-        name: "Pivôs de Irrigação"
-        service_path: "Pivos_Mapeados/FeatureServer/0"
-        geometry_type: MultiPolygon
-      - id: demanda_irrigacao
-        name: "Demanda de Irrigação"
-        service_path: "Demanda_de_Irrigacao_Vazao_de_Retirada_para_Irrigacao/FeatureServer/0"
-        geometry_type: Point
-      - id: disponibilidade_hidrica
-        name: "Disponibilidade Hídrica"
-        service_path: "Disponibilidade_Hidrica_Superficial/FeatureServer/0"
-        geometry_type: Point
-    max_record_count: 1000
-    max_concurrent: 2
-    epsg: 4674
+#  ana:
+#    type: arcgis
+#    display_name: "ANA - Águas"
+#    description: "Dados da Agência Nacional de Águas e Saneamento Básico"
+#    category: environmental
+#    group: ana
+#    cadence: monthly
+#    base_url: "https://portal1.snirh.gov.br/server/rest/services/dados_abertos"
+#    layers:
+#      - id: hidrografia
+#        name: "Hidrografia"
+#        service_path: "Hidrografia/FeatureServer/0"
+#        geometry_type: MultiLineString
+#      - id: pivos_irrigacao
+#        name: "Pivôs de Irrigação"
+#        service_path: "Pivos_Mapeados/FeatureServer/0"
+#        geometry_type: MultiPolygon
+#      - id: demanda_irrigacao
+#        name: "Demanda de Irrigação"
+#        service_path: "Demanda_de_Irrigacao_Vazao_de_Retirada_para_Irrigacao/FeatureServer/0"
+#        geometry_type: Point
+#      - id: disponibilidade_hidrica
+#        name: "Disponibilidade Hídrica"
+#        service_path: "Disponibilidade_Hidrica_Superficial/FeatureServer/0"
+#        geometry_type: Point
+#    max_record_count: 1000
+#    max_concurrent: 2
+#    epsg: 4674
 
   sfb:
     type: arcgis
@@ -420,22 +468,23 @@ sources:
     description: >-
       Cadastro Nacional de Florestas Públicas e concessões
       florestais
-    category: environmental
+    category: land_tenure
     group: sfb
+    cadence: quarterly
     base_url: "https://mapas.florestal.gov.br/server/rest/services"
     layers:
       - id: cnfp
         name: "Cadastro Nacional de Florestas Públicas"
         service_path: "Hosted/CNFP_v19_03_retificado_17072025/FeatureServer/9"
         geometry_type: MultiPolygon
-      - id: concessoes
-        name: "Concessões Florestais"
-        service_path: "Hosted/unidades_concessoes_florestais/FeatureServer/0"
-        geometry_type: MultiPolygon
-      - id: ifn_conglomerados
-        name: "IFN - Conglomerados"
-        service_path: "DadosAbertos-IFN/Conglomerado/FeatureServer/0"
-        geometry_type: Point
+#      - id: concessoes
+#        name: "Concessões Florestais"
+#        service_path: "Hosted/unidades_concessoes_florestais/FeatureServer/0"
+#        geometry_type: MultiPolygon
+#      - id: ifn_conglomerados
+#        name: "IFN - Conglomerados"
+#        service_path: "DadosAbertos-IFN/Conglomerado/FeatureServer/0"
+#        geometry_type: Point
     max_record_count: 2000
     max_concurrent: 2
     epsg: 4674

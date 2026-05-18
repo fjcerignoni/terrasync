@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import logging
+import sys
+from pathlib import Path
 
 from .catalog import refresh_catalog
 from .config import SOURCES, SOURCE_GROUPS, resolve_sources
@@ -55,6 +57,19 @@ def _add_catalog_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_status_parser(subparsers: argparse._SubParsersAction) -> None:
+    p = subparsers.add_parser(
+        "status",
+        help="Launch the Streamlit observability dashboard (requires extra 'dashboard').",
+    )
+    p.add_argument("--port", type=int, default=8501, help="Port for the Streamlit server.")
+    p.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Do not open a browser window automatically.",
+    )
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="terrasync — acquire, store and process Brazilian geographic data."
@@ -68,6 +83,7 @@ def _parse_args() -> argparse.Namespace:
     _add_ingest_parser(subparsers)
     _add_transform_parser(subparsers)
     _add_catalog_parser(subparsers)
+    _add_status_parser(subparsers)
     return parser.parse_args()
 
 
@@ -113,7 +129,7 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
     refresh_catalog()
 
 
-def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
+def _ensure_external_dirs(runner, logger: logging.Logger, vars_override: str | None = None) -> None:
     """Pre-create parent dirs for every `materialized=external` model.
 
     DuckDB's COPY TO does not create nested parent directories. For locations
@@ -125,7 +141,10 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
     from pathlib import Path
 
     dbt_dir = str(DBT_DIR)
-    parse_res = runner.invoke(["parse", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir])
+    parse_cmd = ["parse", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir]
+    if vars_override:
+        parse_cmd.extend(["--vars", vars_override])
+    parse_res = runner.invoke(parse_cmd)
     if not parse_res.success:
         return  # let `dbt run` surface the same parse error
 
@@ -153,10 +172,19 @@ def _ensure_external_dirs(runner, logger: logging.Logger) -> None:
 
 
 def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
+    import json
+    import os
+
     from dbt.cli.main import dbtRunner
+    from .config import DATA_DIR, DUCKDB_PATH
+
+    # Injeta paths absolutas — dbtRunner resolve paths relativas contra o cwd do
+    # processo (não contra --project-dir), então não podemos depender de relativos.
+    os.environ["TERRASYNC_DUCKDB_PATH"] = str(DUCKDB_PATH)
+    vars_override = json.dumps({"data_root": DATA_DIR.as_posix()})
 
     runner = dbtRunner()
-    _ensure_external_dirs(runner, logger)
+    _ensure_external_dirs(runner, logger, vars_override)
 
     dbt_args = ["run"]
     if args.full_refresh:
@@ -166,6 +194,7 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     dbt_dir = str(DBT_DIR)
     dbt_args.extend(["--profiles-dir", dbt_dir])
     dbt_args.extend(["--project-dir", dbt_dir])
+    dbt_args.extend(["--vars", vars_override])
 
     logger.info("Running: dbt %s", " ".join(dbt_args))
     res = runner.invoke(dbt_args)
@@ -173,6 +202,29 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
         logger.error("dbt run failed.")
         raise SystemExit(1)
     logger.info("Transform finished.")
+
+
+def _run_status(args: argparse.Namespace, logger: logging.Logger) -> None:
+    try:
+        from streamlit.web import cli as stcli
+    except ImportError:
+        logger.error(
+            "streamlit não instalado. Rode: uv sync --extra dashboard"
+        )
+        raise SystemExit(1)
+
+    app_path = Path(__file__).parent / "dashboard" / "app.py"
+    sys.argv = [
+        "streamlit",
+        "run",
+        str(app_path),
+        "--browser.gatherUsageStats=false",
+        f"--server.port={args.port}",
+    ]
+    if args.no_browser:
+        sys.argv.append("--server.headless=true")
+    logger.info("Launching dashboard at http://localhost:%d", args.port)
+    sys.exit(stcli.main())
 
 
 def run() -> None:
@@ -189,6 +241,8 @@ def run() -> None:
     elif args.command == "catalog":
         logger.info("Refreshing DuckDB catalog...")
         refresh_catalog()
+    elif args.command == "status":
+        _run_status(args, logger)
 
 
 if __name__ == "__main__":

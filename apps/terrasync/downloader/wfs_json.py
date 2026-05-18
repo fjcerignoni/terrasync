@@ -27,8 +27,11 @@ from .io import layer_exists, logger, remove_layer, save_geodataframe
 from .wfs_gml import fetch_gml, wfs_base_params
 
 
+_RETRY_EXC = (httpx.HTTPError, httpx.TimeoutException, json.JSONDecodeError)
+
+
 @retry(
-    retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+    retry=retry_if_exception_type(_RETRY_EXC),
     wait=wait_exponential(multiplier=2, min=4, max=60),
     stop=stop_after_attempt(5),
     reraise=True,
@@ -43,13 +46,18 @@ async def get_total(
     }
     r = await client.get(source.base_url, params=params)
     r.raise_for_status()
-    total = r.json().get("totalFeatures", 0)
+    try:
+        total = r.json().get("totalFeatures", 0)
+    except json.JSONDecodeError:
+        snippet = r.text[:200].replace("\n", " ")
+        logger.warning("[%s] Non-JSON response from totalFeatures (snippet: %r)", layer_id, snippet)
+        raise
     logger.debug("[%s] totalFeatures=%d", layer_id, total)
     return total
 
 
 @retry(
-    retry=retry_if_exception_type((httpx.HTTPError, httpx.TimeoutException)),
+    retry=retry_if_exception_type(_RETRY_EXC),
     wait=wait_exponential(multiplier=2, min=4, max=60),
     stop=stop_after_attempt(5),
     reraise=True,
@@ -66,7 +74,13 @@ async def fetch_page(
         r.raise_for_status()
         async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
             chunks.append(chunk)
-    data = json.loads(b"".join(chunks))
+    raw = b"".join(chunks)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        snippet = raw[:200].decode("utf-8", errors="replace").replace("\n", " ")
+        logger.warning("[%s] Non-JSON page response (snippet: %r)", layer_id, snippet)
+        raise
     features = data.get("features", [])
     if not features:
         return gpd.GeoDataFrame()

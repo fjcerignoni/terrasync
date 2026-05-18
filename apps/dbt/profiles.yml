@@ -3,7 +3,7 @@ terrasync:
   outputs:
     dev:
       type: duckdb
-      path: "../../data/terrasync.duckdb"
+      path: "{{ env_var('TERRASYNC_DUCKDB_PATH', '../../data/terrasync.duckdb') }}"
       extensions:
         - spatial
     postgres:

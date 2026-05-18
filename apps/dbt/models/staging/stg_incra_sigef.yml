@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: stg_incra_sigef
+    description: >-
+      Staging unificado do SIGEF (Sistema de Gestão Fundiária), combinando
+      parcelas privadas e públicas certificadas pelo INCRA. Campo tipo discrimina
+      a origem. Layer overlapping — sobreposições entre parcelas são informação
+      válida (sem ST_CoverageClean). Geometrias em EPSG:4326.
+    columns:
+      - name: tipo
+        data_type: VARCHAR
+        description: Origem da parcela — 'privado' ou 'publico', derivado do filename bronze.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['privado', 'publico']
+      - name: parcela_co
+        data_type: VARCHAR
+        description: Código identificador da parcela certificada (PK do SIGEF).
+        tests:
+          - not_null
+          - unique
+      - name: rt
+        data_type: VARCHAR
+        description: Código do responsável técnico (RT) pela certificação.
+      - name: art
+        data_type: VARCHAR
+        description: Número da Anotação de Responsabilidade Técnica (ART).
+      - name: situacao_i
+        data_type: VARCHAR
+        description: Situação do imóvel no SIGEF.
+      - name: codigo_imo
+        data_type: VARCHAR
+        description: Código do imóvel no sistema fundiário do INCRA.
+      - name: data_submi
+        data_type: TIMESTAMP
+        description: Data de submissão da certificação.
+      - name: data_aprov
+        data_type: TIMESTAMP
+        description: Data de aprovação da certificação.
+      - name: status
+        data_type: VARCHAR
+        description: Status atual da parcela no SIGEF.
+      - name: nome_area
+        data_type: VARCHAR
+        description: Nome da área/imóvel conforme cadastrado.
+      - name: registro_m
+        data_type: VARCHAR
+        description: Registro em cartório (matrícula).
+      - name: registro_d
+        data_type: TIMESTAMP
+        description: Data do registro em cartório.
+      - name: municipio_
+        data_type: INTEGER
+        description: Código do município (referência INCRA, não necessariamente IBGE).
+      - name: uf_id
+        data_type: INTEGER
+        description: Código da unidade federativa (referência interna INCRA).
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON da parcela em EPSG:4326.
+        tests:
+          - not_null
