@@ -1,0 +1,10 @@
+﻿version: 2
+models:
+  - name: stg_funai
+    description: Staging FUNAI — Terras Indigenas demarcadas (poligonos). Geometrias em EPSG:4326.
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

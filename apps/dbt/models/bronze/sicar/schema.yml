@@ -1,0 +1,272 @@
+﻿version: 2
+models:
+  - name: bro_sicar_ac
+    description: "Bronze SICAR AC."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_al
+    description: "Bronze SICAR AL."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_am
+    description: "Bronze SICAR AM."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ap
+    description: "Bronze SICAR AP."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ba
+    description: "Bronze SICAR BA."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ce
+    description: "Bronze SICAR CE."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_df
+    description: "Bronze SICAR DF."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_es
+    description: "Bronze SICAR ES."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_go
+    description: "Bronze SICAR GO."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ma
+    description: "Bronze SICAR MA."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_mg
+    description: "Bronze SICAR MG."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ms
+    description: "Bronze SICAR MS."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_mt
+    description: "Bronze SICAR MT."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_pa
+    description: "Bronze SICAR PA."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_pb
+    description: "Bronze SICAR PB."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_pe
+    description: "Bronze SICAR PE."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_pi
+    description: "Bronze SICAR PI."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_pr
+    description: "Bronze SICAR PR."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_rj
+    description: "Bronze SICAR RJ."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_rn
+    description: "Bronze SICAR RN."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_ro
+    description: "Bronze SICAR RO."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_rr
+    description: "Bronze SICAR RR."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_rs
+    description: "Bronze SICAR RS."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_sc
+    description: "Bronze SICAR SC."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_se
+    description: "Bronze SICAR SE."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_sp
+    description: "Bronze SICAR SP."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_sicar_to
+    description: "Bronze SICAR TO."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

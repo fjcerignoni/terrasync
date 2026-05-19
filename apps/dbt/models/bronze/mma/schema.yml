@@ -1,0 +1,12 @@
+﻿version: 2
+models:
+  - name: bro_mma_cnuc
+    description: "Bronze MMA — CNUC Unidades de Conservação."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

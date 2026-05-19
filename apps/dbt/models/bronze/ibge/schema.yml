@@ -1,0 +1,12 @@
+﻿version: 2
+models:
+  - name: bro_ibge_municipios
+    description: "Bronze IBGE — Municípios 2025."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

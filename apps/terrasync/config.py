@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .paths import DATA_DIR, DBT_DIR
 
+RAWDATA_DIR = DATA_DIR / "rawdata"
 BRONZE_DIR = DATA_DIR / "bronze"
 STAGING_DIR = DATA_DIR / "staging"
 CACHE_DIR = DATA_DIR / "cache"
@@ -23,12 +24,22 @@ _SOURCES_YAML = Path(__file__).parent / "sources.yaml"
 # ---------------------------------------------------------------------------
 
 
+class ProviderConfig(BaseModel):
+    display_name: str
+
+
 class LayerMeta(BaseModel):
     id: str
     name: str | None = None
     geometry_type: str = "MultiPolygon"
     temporal: bool = False
     service_path: str | None = None  # ArcGIS only
+    # Per-layer WFS overrides
+    base_url: str | None = None
+    layer_template: str | None = None
+    sort_by: str | None = None
+    # Per-layer ZIP override
+    url: str | None = None
 
 
 Cadence = Literal["daily", "weekly", "monthly", "quarterly", "yearly", "unknown"]
@@ -40,11 +51,11 @@ class WFSSource(BaseModel):
     display_name: str = ""
     description: str = ""
     category: str = "boundaries"
-    group: str | None = None
+    provider: str | None = None
     temporal: bool = False
     cadence: Cadence = "unknown"
-    base_url: str
-    layer_template: str
+    base_url: str | None = None
+    layer_template: str | None = None
     layers: list[LayerMeta]
     wfs_version: str = "2.0.0"
     page_size: int = 10_000
@@ -56,14 +67,34 @@ class WFSSource(BaseModel):
     use_gml: bool = False
 
     @property
-    def bronze_dir(self) -> Path:
-        if self.group and self.group != self.name:
-            return BRONZE_DIR / self.group
-        return BRONZE_DIR / self.name
+    def rawdata_dir(self) -> Path:
+        return RAWDATA_DIR / self.name
 
     @property
     def layer_ids(self) -> list[str]:
         return [layer.id for layer in self.layers]
+
+    def effective_base_url(self, layer_id: str) -> str:
+        layer = next((l for l in self.layers if l.id == layer_id), None)
+        if layer and layer.base_url:
+            return layer.base_url
+        if self.base_url:
+            return self.base_url
+        raise ValueError(f"No base_url configured for layer {layer_id!r} in source {self.name!r}")
+
+    def effective_template(self, layer_id: str) -> str:
+        layer = next((l for l in self.layers if l.id == layer_id), None)
+        if layer and layer.layer_template:
+            return layer.layer_template
+        if self.layer_template:
+            return self.layer_template
+        raise ValueError(f"No layer_template configured for layer {layer_id!r} in source {self.name!r}")
+
+    def effective_sort_by(self, layer_id: str) -> str | None:
+        layer = next((l for l in self.layers if l.id == layer_id), None)
+        if layer and layer.sort_by:
+            return layer.sort_by
+        return self.sort_by
 
     def pagination_params(self, count: int, start: int) -> dict[str, int]:
         if self.wfs_version >= "2.0.0":
@@ -80,7 +111,7 @@ class ArcGISSource(BaseModel):
     display_name: str = ""
     description: str = ""
     category: str = "boundaries"
-    group: str | None = None
+    provider: str | None = None
     cadence: Cadence = "unknown"
     base_url: str
     layers: list[LayerMeta]
@@ -89,10 +120,8 @@ class ArcGISSource(BaseModel):
     epsg: int = 4674
 
     @property
-    def bronze_dir(self) -> Path:
-        if self.group and self.group != self.name:
-            return BRONZE_DIR / self.group
-        return BRONZE_DIR / self.name
+    def rawdata_dir(self) -> Path:
+        return RAWDATA_DIR / self.name
 
     @property
     def layer_ids(self) -> list[str]:
@@ -109,33 +138,37 @@ class ZipShapefileSource(BaseModel):
     display_name: str = ""
     description: str = ""
     category: str = "boundaries"
-    group: str | None = None
+    provider: str | None = None
     cadence: Cadence = "unknown"
     epsg: int = 4674
-    url: str
-    manual: bool = False  # if true, downloader never fetches; user supplies cache file
-    layer_id: str | None = None  # overrides default (which is source.name)
-    encoding: str | None = None  # passed to pyogrio when shapefile lacks a .cpg
+    url: str | None = None
+    layers: list[LayerMeta] = Field(default_factory=list)
+    manual: bool = False
+    encoding: str | None = None
 
     @property
-    def bronze_dir(self) -> Path:
-        if self.group and self.group != self.name:
-            return BRONZE_DIR / self.group
-        return BRONZE_DIR / self.name
+    def rawdata_dir(self) -> Path:
+        return RAWDATA_DIR / self.name
 
     @property
     def layer_ids(self) -> list[str]:
-        return [self.layer_id or self.name]
+        return [l.id for l in self.layers]
+
+    def effective_url(self, layer_id: str) -> str:
+        layer = next((l for l in self.layers if l.id == layer_id), None)
+        if layer and layer.url:
+            return layer.url
+        if self.url:
+            return self.url
+        raise ValueError(f"No url configured for layer {layer_id!r} in source {self.name!r}")
 
 
 DataSource = WFSSource | ArcGISSource | ZipShapefileSource
 
 
 def source_parquet_path(source: "DataSource", layer_id: str) -> Path:
-    """Canonical path of a layer's parquet inside bronze_dir."""
-    if layer_id == source.name:
-        return source.bronze_dir / f"{layer_id}.parquet"
-    return source.bronze_dir / f"{source.name}_{layer_id}.parquet"
+    """Canonical rawdata path for a layer's parquet."""
+    return source.rawdata_dir / f"{source.name}_{layer_id}.parquet"
 
 
 class SourceGroup(BaseModel):
@@ -156,6 +189,10 @@ def _load_catalog(
     with open(yaml_path, encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
+    providers: dict[str, ProviderConfig] = {
+        k: ProviderConfig(**v) for k, v in raw.get("providers", {}).items()
+    }
+
     sources: dict[str, DataSource] = {}
     for key, cfg in raw.get("sources", {}).items():
         src_type = cfg.get("type")
@@ -170,10 +207,21 @@ def _load_catalog(
         src.name = key
         sources[key] = src
 
-    groups: dict[str, SourceGroup] = {}
-    for key, gcfg in raw.get("groups", {}).items():
-        grp = SourceGroup(key=key, **gcfg)
-        groups[key] = grp
+    # Auto-generate source groups from provider membership
+    provider_sources: dict[str, list[str]] = {}
+    for src_name, src in sources.items():
+        p = getattr(src, "provider", None)
+        if p:
+            provider_sources.setdefault(p, []).append(src_name)
+
+    groups: dict[str, SourceGroup] = {
+        p_key: SourceGroup(
+            key=p_key,
+            name=providers[p_key].display_name if p_key in providers else p_key,
+            sources=src_list,
+        )
+        for p_key, src_list in provider_sources.items()
+    }
 
     return sources, groups
 

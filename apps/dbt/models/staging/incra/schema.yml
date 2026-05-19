@@ -1,0 +1,127 @@
+﻿version: 2
+models:
+  - name: stg_incra_sigef
+    description: >-
+      Staging unificado do SIGEF (Sistema de Gestao Fundiaria), combinando
+      parcelas privadas e publicas certificadas pelo INCRA. Campo tipo discrimina
+      a origem. Layer overlapping — sobreposicoes entre parcelas sao informacao
+      valida (sem ST_CoverageClean). Geometrias em EPSG:4326.
+    columns:
+      - name: tipo
+        data_type: VARCHAR
+        description: "Origem da parcela — 'privado' ou 'publico', derivado do filename rawdata."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['privado', 'publico']
+      - name: parcela_co
+        data_type: VARCHAR
+        description: Codigo identificador da parcela certificada (PK do SIGEF).
+        tests:
+          - not_null
+          - unique
+      - name: rt
+        data_type: VARCHAR
+        description: Codigo do responsavel tecnico (RT) pela certificacao.
+      - name: art
+        data_type: VARCHAR
+        description: Numero da Anotacao de Responsabilidade Tecnica (ART).
+      - name: situacao_i
+        data_type: VARCHAR
+        description: Situacao do imovel no SIGEF.
+      - name: codigo_imo
+        data_type: VARCHAR
+        description: Codigo do imovel no sistema fundiario do INCRA.
+      - name: data_submi
+        data_type: TIMESTAMP
+        description: Data de submissao da certificacao.
+      - name: data_aprov
+        data_type: TIMESTAMP
+        description: Data de aprovacao da certificacao.
+      - name: status
+        data_type: VARCHAR
+        description: Status atual da parcela no SIGEF.
+      - name: nome_area
+        data_type: VARCHAR
+        description: Nome da area/imovel conforme cadastrado.
+      - name: registro_m
+        data_type: VARCHAR
+        description: Registro em cartorio (matricula).
+      - name: registro_d
+        data_type: TIMESTAMP
+        description: Data do registro em cartorio.
+      - name: municipio_
+        data_type: INTEGER
+        description: Codigo do municipio (referencia INCRA).
+      - name: uf_id
+        data_type: INTEGER
+        description: Codigo da unidade federativa (referencia interna INCRA).
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON da parcela em EPSG:4326.
+        tests:
+          - not_null
+
+  - name: stg_incra_snci
+    description: >-
+      Staging unificado do SNCI (Sistema Nacional de Certificacao de Imoveis),
+      combinando imoveis privados e publicos certificados pelo INCRA. Campo tipo
+      discrimina a origem. Geometrias em EPSG:4326.
+    columns:
+      - name: tipo
+        data_type: VARCHAR
+        description: "Origem do imovel — 'privado' ou 'publico', derivado do filename rawdata."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['privado', 'publico']
+      - name: num_proces
+        data_type: VARCHAR
+        description: Numero do processo administrativo INCRA.
+      - name: sr
+        data_type: VARCHAR
+        description: Superintendencia Regional do INCRA responsavel.
+      - name: num_certif
+        data_type: VARCHAR
+        description: Numero do certificado de imovel rural.
+      - name: data_certi
+        data_type: TIMESTAMP
+        description: Data de emissao do certificado.
+      - name: qtd_area_p
+        data_type: VARCHAR
+        description: Area do imovel conforme certificacao (string da fonte).
+      - name: cod_profis
+        data_type: VARCHAR
+        description: Codigo do profissional responsavel.
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: Codigo do imovel rural no cadastro INCRA.
+      - name: nome_imove
+        data_type: VARCHAR
+        description: Nome do imovel rural conforme cadastro.
+      - name: uf_municip
+        data_type: VARCHAR
+        description: Concatenacao de UF e municipio (string da fonte).
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON do imovel em EPSG:4326.
+        tests:
+          - not_null
+
+  - name: stg_incra_assentamentos
+    description: Staging INCRA Assentamentos — reforma agraria (Brasil inteiro).
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null
+
+  - name: stg_incra_quilombolas
+    description: Staging INCRA Quilombolas — areas quilombolas reconhecidas.
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

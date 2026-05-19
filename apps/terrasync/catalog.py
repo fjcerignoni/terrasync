@@ -18,12 +18,13 @@ def refresh_catalog() -> None:
 
     stale = con.execute(
         "SELECT table_name FROM information_schema.views "
-        "WHERE table_schema = current_schema() AND table_name LIKE 'bronze_%'"
+        "WHERE table_schema = current_schema() "
+        "AND (table_name LIKE 'rawdata_%' OR table_name LIKE 'bronze_%')"
     ).fetchall()
     for (view_name,) in stale:
         con.execute(f'DROP VIEW IF EXISTS "{view_name}"')
     if stale:
-        logger.info("Dropped %d existing bronze_* view(s).", len(stale))
+        logger.info("Dropped %d existing rawdata_*/bronze_* view(s).", len(stale))
 
     registered = 0
     for key, source in SOURCES.items():
@@ -31,7 +32,7 @@ def refresh_catalog() -> None:
             parquet_file = source_parquet_path(source, layer_id)
             if not parquet_file.exists():
                 continue
-            view_name = f"bronze_{key}_{layer_id}"
+            view_name = f"rawdata_{key}_{layer_id}"
             abs_path = parquet_file.resolve().as_posix()
             con.execute(
                 f'CREATE OR REPLACE VIEW "{view_name}" AS '

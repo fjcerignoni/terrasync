@@ -1,0 +1,36 @@
+﻿version: 2
+models:
+  - name: stg_prodes
+    description: >-
+      Staging PRODES — desmatamento anual unificado (6 biomas). biome derivado
+      do filename. scene_id normalizado para DOUBLE (pampa usa BIGINT na fonte).
+      Geometrias MULTIPOLYGON em EPSG:4326.
+    columns:
+      - name: biome
+        data_type: VARCHAR
+        description: Bioma (amazonia, cerrado, caatinga, mata_atlantica, pantanal, pampa).
+        tests:
+          - not_null
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null
+
+  - name: stg_deter_amazonia
+    description: Staging DETER Amazônia — alertas de desmatamento em tempo real.
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null
+
+  - name: stg_deter_cerrado
+    description: Staging DETER Cerrado — alertas de desmatamento em tempo real.
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

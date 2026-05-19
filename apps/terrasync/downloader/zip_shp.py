@@ -36,6 +36,7 @@ def _shapefile_to_parquet(
     out_path: Path,
     epsg: int,
     *,
+    tag: str,
     metadata: dict[bytes, bytes],
     encoding: str | None = None,
 ) -> int:
@@ -78,7 +79,7 @@ def _shapefile_to_parquet(
             total += len(chunk)
             logger.debug(
                 "[%s] Written %d/%d features so far...",
-                out_path.stem, total, feature_count,
+                tag, total, feature_count,
             )
     finally:
         if writer:
@@ -87,7 +88,7 @@ def _shapefile_to_parquet(
             pyogrio.set_gdal_config_options({"SHAPE_ENCODING": None})
     logger.info(
         "[%s] Parquet written: %d features in %.1fs",
-        out_path.stem, total, time.monotonic() - t0,
+        tag, total, time.monotonic() - t0,
     )
     return total
 
@@ -102,12 +103,12 @@ def _find_manual_cache(source: ZipShapefileSource) -> Path | None:
     return matches[0] if matches else None
 
 
-def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
-    layer_id = source.layer_ids[0]
+def download_zip_layer(source: ZipShapefileSource, layer_id: str, reset: bool = False) -> None:
+    tag = f"{source.name}/{layer_id}"
     out_path = parquet_path(source, layer_id)
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    zip_cache_path = CACHE_DIR / f"{source.name}.zip"
+    zip_cache_path = CACHE_DIR / f"{source.name}_{layer_id}.zip"
     zip_partial_path = zip_cache_path.with_suffix(".zip.partial")
 
     if reset:
@@ -117,26 +118,26 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
             for p in (zip_cache_path, zip_partial_path):
                 if p.exists():
                     p.unlink()
-                    logger.info("[%s] Cached ZIP removed: %s", layer_id, p)
+                    logger.info("[%s] Cached ZIP removed: %s", tag, p)
 
     if layer_exists(source, layer_id):
-        logger.info("[%s] Parquet already exists, skipping.", layer_id)
+        logger.info("[%s] Parquet already exists, skipping.", tag)
         return
 
     acquired_at = utc_now_iso()
     t_start = time.monotonic()
-    endpoint = source.url
+    endpoint = source.effective_url(layer_id)
 
     if source.manual:
         manual_zip = _find_manual_cache(source)
         if manual_zip is None:
             msg = (
-                f"Manual source. Download the ZIP from {source.url} "
+                f"Manual source. Download the ZIP from {endpoint} "
                 f"and place it at {CACHE_DIR}/{source.name}*.zip "
                 f"(any filename starting with '{source.name}', original publisher "
                 f"name preferred)."
             )
-            logger.error("[%s] %s", layer_id, msg)
+            logger.error("[%s] %s", tag, msg)
             append_run(build_entry(
                 source, layer_id,
                 acquired_at=acquired_at,
@@ -145,23 +146,23 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
             ))
             return
         zip_cache_path = manual_zip
-        logger.info("[%s] Using manual cache at %s", layer_id, zip_cache_path)
+        logger.info("[%s] Using manual cache at %s", tag, zip_cache_path)
     elif zip_cache_path.exists():
-        logger.info("[%s] Using cached ZIP at %s", layer_id, zip_cache_path)
+        logger.info("[%s] Using cached ZIP at %s", tag, zip_cache_path)
     else:
-        logger.info("[%s] Downloading ZIP from %s ...", layer_id, source.url)
+        logger.info("[%s] Downloading ZIP from %s ...", tag, endpoint)
         timeout = httpx.Timeout(connect=30.0, read=600.0, write=30.0, pool=30.0)
         t_dl = time.monotonic()
         try:
             with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
-                with client.stream("GET", source.url) as r:
+                with client.stream("GET", endpoint) as r:
                     r.raise_for_status()
                     with open(zip_partial_path, "wb") as f:
                         for chunk in r.iter_bytes(chunk_size=1024 * 1024):
                             f.write(chunk)
             zip_partial_path.replace(zip_cache_path)
         except Exception as exc:
-            logger.exception("[%s] Failed to download ZIP.", layer_id)
+            logger.exception("[%s] Failed to download ZIP.", tag)
             zip_partial_path.unlink(missing_ok=True)
             append_run(build_entry(
                 source, layer_id,
@@ -173,7 +174,7 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
         size_kb = zip_cache_path.stat().st_size / 1024
         logger.info(
             "[%s] Download complete: %.0f KB in %.1fs (cached at %s)",
-            layer_id, size_kb, time.monotonic() - t_dl, zip_cache_path,
+            tag, size_kb, time.monotonic() - t_dl, zip_cache_path,
         )
 
     extract_dir = Path(tempfile.mkdtemp(prefix=f"terrasync_{layer_id}_"))
@@ -181,7 +182,7 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
         with zipfile.ZipFile(zip_cache_path) as zf:
             shp_files = [n for n in zf.namelist() if n.endswith(".shp")]
             if not shp_files:
-                logger.error("[%s] No .shp file found in ZIP.", layer_id)
+                logger.error("[%s] No .shp file found in ZIP.", tag)
                 append_run(build_entry(
                     source, layer_id,
                     acquired_at=acquired_at,
@@ -201,7 +202,7 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
                 cpg_path.unlink()
                 logger.info(
                     "[%s] Removed bundled .cpg; using source.encoding=%s",
-                    layer_id, source.encoding,
+                    tag, source.encoding,
                 )
         info = pyogrio.read_info(shp_path)
         feature_count = info["features"]
@@ -211,11 +212,11 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
         )
         total = _shapefile_to_parquet(
             shp_path, out_path, source.epsg,
-            metadata=metadata, encoding=source.encoding,
+            tag=tag, metadata=metadata, encoding=source.encoding,
         )
-        logger.info("[%s] Done: %d features saved to %s.", layer_id, total, out_path)
+        logger.info("[%s] Done: %d features saved to %s.", tag, total, out_path)
     except Exception as exc:
-        logger.exception("[%s] Failed to convert shapefile to parquet.", layer_id)
+        logger.exception("[%s] Failed to convert shapefile to parquet.", tag)
         if out_path.exists():
             out_path.unlink()
         append_run(build_entry(
@@ -230,9 +231,9 @@ def download_zip_layer(source: ZipShapefileSource, reset: bool = False) -> None:
 
     if not source.manual:
         zip_cache_path.unlink(missing_ok=True)
-        logger.info("[%s] Cached ZIP removed after successful parquet write.", layer_id)
+        logger.info("[%s] Cached ZIP removed after successful parquet write.", tag)
     else:
-        logger.info("[%s] Manual cache kept at %s.", layer_id, zip_cache_path)
+        logger.info("[%s] Manual cache kept at %s.", tag, zip_cache_path)
 
     append_run(build_entry(
         source, layer_id,

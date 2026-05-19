@@ -1,0 +1,82 @@
+﻿version: 2
+models:
+  - name: bro_prodes_amazonia
+    description: "Bronze PRODES amazonia — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_prodes_cerrado
+    description: "Bronze PRODES cerrado — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_prodes_caatinga
+    description: "Bronze PRODES caatinga — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_prodes_mata_atlantica
+    description: "Bronze PRODES mata_atlantica — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_prodes_pantanal
+    description: "Bronze PRODES pantanal — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_prodes_pampa
+    description: "Bronze PRODES pampa — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_deter_amazonia
+    description: "Bronze DETER amazonia — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_deter_cerrado
+    description: "Bronze DETER cerrado — clean_geometry(rawdata, 4674->4326)."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

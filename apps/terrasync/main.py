@@ -113,12 +113,14 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
         logger.info("[%s] All downloads finished.", source.name)
 
     async def _run_all():
+        results = await asyncio.gather(
+            *[_ingest_one(source) for source in targets],
+            return_exceptions=True,
+        )
         failed = []
-        for source in targets:
-            try:
-                await _ingest_one(source)
-            except Exception:
-                logger.exception("[%s] Ingest failed, continuing...", source.name)
+        for source, result in zip(targets, results):
+            if isinstance(result, BaseException):
+                logger.error("[%s] Ingest failed: %s", source.name, result, exc_info=result)
                 failed.append(source.name)
         if failed:
             logger.error("Failed sources: %s", failed)

@@ -1,0 +1,10 @@
+﻿version: 2
+models:
+  - name: stg_sfb_cnfp
+    description: Staging SFB — Cadastro Nacional de Florestas Publicas (CNFP). Geometrias em EPSG:4326.
+    columns:
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

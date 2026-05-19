@@ -1,0 +1,62 @@
+﻿version: 2
+models:
+  - name: bro_incra_sigef_privado
+    description: "Bronze INCRA SIGEF privado."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_incra_sigef_publico
+    description: "Bronze INCRA SIGEF publico."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_incra_snci_privado
+    description: "Bronze INCRA SNCI privado."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_incra_snci_publico
+    description: "Bronze INCRA SNCI publico."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_incra_assentamentos_brasil
+    description: "Bronze INCRA Assentamentos Brasil."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+  - name: bro_incra_quilombolas_lim_quilombolas_a
+    description: "Bronze INCRA Quilombolas."
+    config:
+      tags: ['bronze']
+    columns:
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

@@ -24,8 +24,8 @@ async def download_all(
     layers: list[str] | None = None,
     reset: bool = False,
 ) -> None:
-    """Download every requested layer of `source` to bronze parquet."""
-    source.bronze_dir.mkdir(parents=True, exist_ok=True)
+    """Download every requested layer of `source` to rawdata parquet."""
+    source.rawdata_dir.mkdir(parents=True, exist_ok=True)
     ssl_ctx = make_ssl_context()
     limits, timeout = _httpx_defaults()
 
@@ -50,7 +50,9 @@ async def download_all(
             )
 
     elif isinstance(source, ZipShapefileSource):
-        await asyncio.to_thread(download_zip_layer, source, reset)
+        layer_ids = layers or source.layer_ids
+        for lid in layer_ids:
+            await asyncio.to_thread(download_zip_layer, source, lid, reset)
 
 
 async def download_layer(

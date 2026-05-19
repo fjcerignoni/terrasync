@@ -29,12 +29,13 @@ def wfs_base_params(source: WFSSource, layer_id: str) -> dict:
         "service": "WFS",
         "version": source.wfs_version,
         "request": "GetFeature",
-        "typeName": source.layer_template.format(layer=layer_id),
+        "typeName": source.effective_template(layer_id).format(layer=layer_id),
     }
     if not source.use_gml:
         params["outputFormat"] = "application/json"
-    if source.sort_by:
-        params["sortBy"] = source.sort_by
+    sort_by = source.effective_sort_by(layer_id)
+    if sort_by:
+        params["sortBy"] = sort_by
     if source.extra_params:
         for k, v in source.extra_params.items():
             params[k] = v.format(layer=layer_id)
@@ -53,7 +54,7 @@ async def fetch_gml(
     params = wfs_base_params(source, layer_id)
     chunks: list[bytes] = []
     t_dl = time.monotonic()
-    async with client.stream("GET", source.base_url, params=params) as r:
+    async with client.stream("GET", source.effective_base_url(layer_id), params=params) as r:
         r.raise_for_status()
         async for chunk in r.aiter_bytes(chunk_size=1024 * 1024):
             chunks.append(chunk)

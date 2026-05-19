@@ -19,6 +19,8 @@ vars:
 
 models:
   terrasync:
+    bronze:
+      +materialized: external
     staging:
       +materialized: external
     silver:

@@ -47,16 +47,17 @@ async def download_arcgis_layer(
     sem: asyncio.Semaphore,
     reset: bool = False,
 ) -> None:
+    tag = f"{source.name}/{layer_id}"
     async with sem:
         if reset:
             remove_layer(source, layer_id)
         if layer_exists(source, layer_id):
-            logger.info("[%s] Parquet already exists, skipping.", layer_id)
+            logger.info("[%s] Parquet already exists, skipping.", tag)
             return
 
         service_path = source.layer_service_paths[layer_id]
         url = f"{source.base_url}/{service_path}/query"
-        logger.info("[%s] Fetching from ArcGIS REST: %s", layer_id, url)
+        logger.info("[%s] Fetching from ArcGIS REST: %s", tag, url)
 
         acquired_at = utc_now_iso()
         t_start = time.monotonic()
@@ -81,18 +82,18 @@ async def download_arcgis_layer(
                 all_features.extend(features)
                 logger.info(
                     "[%s] Fetched %d features (total so far: %d).",
-                    layer_id, len(features), len(all_features),
+                    tag, len(features), len(all_features),
                 )
                 if len(features) < source.max_record_count:
                     break
                 offset += len(features)
         except Exception as exc:
-            logger.exception("[%s] Failed to fetch from ArcGIS.", layer_id)
+            logger.exception("[%s] Failed to fetch from ArcGIS.", tag)
             _record("failed", error=repr(exc))
             return
 
         if not all_features:
-            logger.warning("[%s] No features found.", layer_id)
+            logger.warning("[%s] No features found.", tag)
             _record("empty")
             return
 

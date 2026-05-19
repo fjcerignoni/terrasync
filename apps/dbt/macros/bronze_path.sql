@@ -1,3 +1,3 @@
-{% macro bronze_path(source, glob='*.parquet') %}
-    {{- return(var('data_root') ~ '/bronze/' ~ source ~ '/' ~ glob) -}}
+{% macro bronze_path(source, layer) %}
+    {{- return(var('data_root') ~ '/bronze/' ~ source ~ '/' ~ source ~ '_' ~ layer ~ '.parquet') -}}
 {% endmacro %}
