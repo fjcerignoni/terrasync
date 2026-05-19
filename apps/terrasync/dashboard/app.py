@@ -15,9 +15,10 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from terrasync.config import BRONZE_DIR, SOURCE_GROUPS, SOURCES, STAGING_DIR
+from terrasync.config import BRONZE_DIR, RAWDATA_DIR, SOURCE_GROUPS, SOURCES, STAGING_DIR
 from terrasync.dashboard import dbt_artifacts
 from terrasync.dashboard.bronze import scan_bronze
+from terrasync.dashboard.rawdata import scan_rawdata
 from terrasync.dashboard.probe import ProbeResult, probe_all
 from terrasync.dashboard.queries import (
     _connect,
@@ -155,9 +156,10 @@ def _ensure_probe_results(selection: str | None) -> dict[str, ProbeResult]:
     return cached
 
 
-def _tab_bronze(rows: list[dict], group: str | None) -> None:
-    st.subheader("Bronze health")
+def _tab_rawdata(rows: list[dict], group: str | None) -> None:
+    st.subheader("Rawdata health")
     st.caption(
+        "Parquets em `data/rawdata/` — saída direta do downloader. "
         "Semáforo de age respeita `cadence` declarada por source "
         "(daily/weekly/monthly/quarterly/yearly). ⚪ = sem cadence declarada. "
         "Coluna `up` mostra liveness dos endpoints (✓ up · ⚠ slow · ✗ down)."
@@ -170,7 +172,7 @@ def _tab_bronze(rows: list[dict], group: str | None) -> None:
     probe_results = _ensure_probe_results(group)
 
     if not rows:
-        st.info("Nenhum parquet bronze encontrado em `data/bronze/`.")
+        st.info("Nenhum parquet rawdata encontrado em `data/rawdata/`.")
         return
 
     display: list[dict] = []
@@ -224,6 +226,43 @@ def _tab_bronze(rows: list[dict], group: str | None) -> None:
         )
 
 
+def _tab_bronze(rows: list[dict]) -> None:
+    st.subheader("Bronze health")
+    st.caption(
+        "Parquets em `data/bronze/` — saída dos modelos `bro_*` do dbt. "
+        "Cada layer passou por `clean_geometry` (ST_MakeValid → 4326). "
+        "`pct_drop` = % de features do rawdata eliminadas (geoms irrecuperáveis)."
+    )
+
+    if not rows:
+        st.info(
+            "Nenhum parquet bronze encontrado em `data/bronze/`. "
+            "Rode `uv run terrasync transform --select tag:bronze` para materializar."
+        )
+        return
+
+    display = [
+        {
+            "source": r["source"],
+            "layer": r["layer"],
+            "provider": r["provider"],
+            "rawdata_features": r["rawdata_features"],
+            "bronze_features": r["n_features"],
+            "pct_drop (%)": r["pct_drop"],
+            "size (MB)": r["file_size_mb"],
+        }
+        for r in rows
+    ]
+    df = pd.DataFrame(display)
+    st.dataframe(df, hide_index=True, use_container_width=True)
+
+    high_drop = [r for r in rows if r["pct_drop"] is not None and r["pct_drop"] > 1.0]
+    if high_drop:
+        st.warning(
+            f"{len(high_drop)} layer(s) com pct_drop > 1% — geometrias perdidas em clean_geometry."
+        )
+
+
 def _format_deps(deps: list[str], limit: int = 3) -> str:
     if not deps:
         return ""
@@ -232,7 +271,7 @@ def _format_deps(deps: list[str], limit: int = 3) -> str:
     return f"{', '.join(deps[:limit])}, +{len(deps) - limit}"
 
 
-def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
+def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
     st.subheader("Staging health")
     st.caption(
         "Uma linha por modelo `stg_*` em `apps/dbt/models/staging/`. "
@@ -257,9 +296,9 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
             "Rode `cd apps/dbt && uv run dbt build` para popular status/tests."
         )
 
-    bronze_by_source: dict[str, int] = {}
-    for r in bronze_rows:
-        bronze_by_source[r["source"]] = bronze_by_source.get(r["source"], 0) + r["n_features"]
+    rawdata_by_source: dict[str, int] = {}
+    for r in rawdata_rows:
+        rawdata_by_source[r["source"]] = rawdata_by_source.get(r["source"], 0) + r["n_features"]
 
     built = [r for r in staging_rows if r["built"]]
     not_built = [r for r in staging_rows if not r["built"]]
@@ -299,13 +338,13 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
         if r["built"]:
             stats = geom_health(r["path"], r["mtime"])
             rows = stats["rows"]
-            bronze_rows_for_source = bronze_by_source.get(r["source"], 0)
+            rawdata_rows_for_source = rawdata_by_source.get(r["source"], 0)
             display.append(
                 {
                     "": "🟢" if rows > 0 else "🟡",
                     "model": r["model"],
                     "source": r["source"] or "(n/a)",
-                    "bronze_rows": bronze_rows_for_source or None,
+                    "rawdata_rows": rawdata_rows_for_source or None,
                     "staging_rows": rows,
                     "n_null_geom": stats["n_null_geom"],
                     "n_empty_geom": stats["n_empty_geom"],
@@ -319,7 +358,7 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
                     "": "⚪",
                     "model": r["model"],
                     "source": r["source"] or "(n/a)",
-                    "bronze_rows": bronze_by_source.get(r["source"], 0) or None,
+                    "rawdata_rows": rawdata_by_source.get(r["source"], 0) or None,
                     "staging_rows": None,
                     "n_null_geom": None,
                     "n_empty_geom": None,
@@ -330,7 +369,7 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
 
     df = pd.DataFrame(display)
     max_rows = max(
-        (d["bronze_rows"] or 0 for d in display),
+        (d["rawdata_rows"] or 0 for d in display),
         default=0,
     ) or 1
     st.dataframe(
@@ -338,9 +377,9 @@ def _tab_staging(staging_rows: list[dict], bronze_rows: list[dict]) -> None:
         hide_index=True,
         use_container_width=True,
         column_config={
-            "bronze_rows": st.column_config.ProgressColumn(
-                "bronze_rows",
-                help="Total de features no bronze da source",
+            "rawdata_rows": st.column_config.ProgressColumn(
+                "rawdata_rows",
+                help="Total de features no rawdata da source",
                 format="%d",
                 min_value=0,
                 max_value=int(max_rows),
@@ -449,10 +488,12 @@ def _tab_runs(df: pd.DataFrame) -> None:
 
 
 def _list_known_parquets() -> list[str]:
-    """All parquets currently on disk under data/staging and data/bronze."""
+    """All parquets currently on disk under data/staging, data/rawdata and data/bronze."""
     paths: list[Path] = []
     if STAGING_DIR.exists():
         paths.extend(sorted(STAGING_DIR.glob("*.parquet")))
+    if RAWDATA_DIR.exists():
+        paths.extend(sorted(RAWDATA_DIR.glob("*/*.parquet")))
     if BRONZE_DIR.exists():
         paths.extend(sorted(BRONZE_DIR.glob("*/*.parquet")))
     return [str(p) for p in paths]
@@ -517,19 +558,23 @@ def main() -> None:
     st.caption(Path.cwd().as_posix())
 
     selection = _sidebar_filter()
-    bronze_rows = _filter_rows(scan_bronze(), selection)
+    all_rawdata_rows = scan_rawdata()
+    rawdata_rows = _filter_rows(all_rawdata_rows, selection)
+    bronze_rows = _filter_rows(scan_bronze(all_rawdata_rows), selection)
     staging_rows = scan_staging()
     runs_df = read_runs(runs_mtime())
 
-    tab_overview, tab_bronze, tab_staging, tab_runs, tab_queries = st.tabs(
-        ["Visão geral", "Bronze health", "Staging health", "Run history", "Queries"]
+    tab_overview, tab_rawdata, tab_bronze, tab_staging, tab_runs, tab_queries = st.tabs(
+        ["Visão geral", "Rawdata health", "Bronze health", "Staging health", "Run history", "Queries"]
     )
     with tab_overview:
-        _tab_overview(bronze_rows, runs_df)
+        _tab_overview(rawdata_rows, runs_df)
+    with tab_rawdata:
+        _tab_rawdata(rawdata_rows, selection)
     with tab_bronze:
-        _tab_bronze(bronze_rows, selection)
+        _tab_bronze(bronze_rows)
     with tab_staging:
-        _tab_staging(staging_rows, bronze_rows)
+        _tab_staging(staging_rows, rawdata_rows)
     with tab_runs:
         _tab_runs(runs_df)
     with tab_queries:

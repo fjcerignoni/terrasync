@@ -19,7 +19,7 @@ _STG_MODELS_DIR = DBT_DIR / "models" / "staging"
 def _list_dbt_staging_models() -> list[str]:
     if not _STG_MODELS_DIR.exists():
         return []
-    return sorted(p.stem for p in _STG_MODELS_DIR.glob("stg_*.sql"))
+    return sorted(p.stem for p in _STG_MODELS_DIR.rglob("stg_*.sql"))
 
 
 def _resolve_source_for_model(model: str) -> str | None:

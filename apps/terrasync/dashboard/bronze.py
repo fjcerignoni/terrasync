@@ -1,18 +1,21 @@
-"""Scan bronze layer parquets: footer metadata + file stats per (source, layer)."""
+"""Scan bronze layer parquets (dbt bro_* output): geometry quality metrics per (source, layer).
+
+pct_drop = percentage of rawdata features lost after clean_geometry. A non-zero
+value indicates geometries that were invalid and could not be repaired.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ..config import SOURCES, DataSource
-from ..manifest import read_parquet_metadata
-from .cadence import age_status as _cadence_age_status
+import pyarrow.parquet as pq
+
+from ..config import BRONZE_DIR, SOURCES, DataSource
 
 
 def _layer_id_from_path(source: DataSource, path: Path) -> str:
-    """Reverse of source_parquet_path: <source>_<layer>.parquet or <name>.parquet."""
+    """Reverse of source_parquet_path: <source>_<layer>.parquet → <layer>."""
     stem = path.stem
     prefix = f"{source.name}_"
     if stem.startswith(prefix):
@@ -20,53 +23,45 @@ def _layer_id_from_path(source: DataSource, path: Path) -> str:
     return stem
 
 
-def _age_days(acquired_at: str | None) -> float | None:
-    if not acquired_at:
-        return None
-    try:
-        dt = datetime.fromisoformat(acquired_at)
-    except ValueError:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    delta = datetime.now(timezone.utc) - dt
-    return delta.total_seconds() / 86400.0
+def scan_bronze(rawdata_rows: list[dict] | None = None) -> list[dict[str, Any]]:
+    """One row per parquet found under data/bronze/<source>/ (dbt bro_* output).
 
+    Returns an empty list before any dbt bro_* model has been materialized.
+    When rawdata_rows are provided, pct_drop is computed as the percentage of
+    rawdata features that were removed by clean_geometry.
+    """
+    rawdata_counts: dict[tuple[str, str], int] = {}
+    if rawdata_rows:
+        for r in rawdata_rows:
+            rawdata_counts[(r["source"], r["layer"])] = r["n_features"]
 
-def scan_bronze() -> list[dict[str, Any]]:
-    """One row per parquet found under data/bronze/<source>/."""
     rows: list[dict[str, Any]] = []
     for source in SOURCES.values():
-        bronze_dir = source.bronze_dir
+        bronze_dir = BRONZE_DIR / source.name
         if not bronze_dir.exists():
             continue
         for parquet in sorted(bronze_dir.glob("*.parquet")):
-            try:
-                meta = read_parquet_metadata(parquet)
-            except Exception as e:
-                meta = {"_error": str(e)}
             stat = parquet.stat()
-            acquired_at = meta.get("acquired_at")
-            age = _age_days(acquired_at)
             try:
-                n_features = int(meta.get("n_features", 0))
-            except ValueError:
+                n_features = pq.read_metadata(parquet).num_rows
+            except Exception:
                 n_features = 0
-            cadence = getattr(source, "cadence", "unknown")
+            layer_id = _layer_id_from_path(source, parquet)
+            rawdata_n = rawdata_counts.get((source.name, layer_id), 0)
+            pct_drop = (
+                round(100.0 * (rawdata_n - n_features) / rawdata_n, 2)
+                if rawdata_n > 0
+                else None
+            )
             rows.append(
                 {
                     "source": source.name,
-                    "layer": _layer_id_from_path(source, parquet),
-                    "category": source.category,
-                    "group": source.group or source.name,
-                    "cadence": cadence,
-                    "acquired_at": acquired_at,
-                    "age_days": age,
-                    "age_status": _cadence_age_status(age, cadence),
+                    "layer": layer_id,
+                    "provider": getattr(source, "provider", None) or source.name,
                     "n_features": n_features,
+                    "rawdata_features": rawdata_n or None,
+                    "pct_drop": pct_drop,
                     "file_size_mb": round(stat.st_size / (1024 * 1024), 2),
-                    "endpoint": meta.get("endpoint", ""),
-                    "source_epsg": meta.get("source_epsg", ""),
                     "path": str(parquet),
                     "mtime": stat.st_mtime,
                 }
