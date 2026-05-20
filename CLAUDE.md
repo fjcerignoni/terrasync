@@ -63,6 +63,11 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 - **Design futuro silver/gold** (coverage types, tiling, templates canônicos): `docs/blueprint_geo_pipeline.md`.
 - **Histórico de sessões e decisões em andamento**: `ai_history.md` (ler apenas se a pergunta for sobre "por que decidimos X" ou estado de pendências).
 
+## Em andamento
+
+- **bdqueimadas (focos de calor)**: plano definido. Próximo passo = validar acesso WFS INPE (layer names desconhecidos) ou usar NASA FIRMS API como alternativa. Decidir abordagem antes de implementar.
+- **geometria multi-tipo**: macros separadas por tipo de vetor (`clean_geometry` polígono, `clean_point_geometry`, `clean_line_geometry`) — criar sob demanda conforme novas fontes exigirem. Raster/análise matricial no horizonte, sem prazo.
+
 ## Após mudança arquitetônica
 
 Atualizar `docs/architecture.md` (se afetar diagrama, escopo, decisão ou estrutura) e acrescentar sessão nova em `ai_history.md` com data, decisões e arquivos tocados.
