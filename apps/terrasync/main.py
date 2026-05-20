@@ -131,13 +131,15 @@ def _run_ingest(args: argparse.Namespace, logger: logging.Logger) -> None:
     refresh_catalog()
 
 
-def _ensure_external_dirs(runner, logger: logging.Logger, vars_override: str | None = None) -> None:
-    """Pre-create parent dirs for every `materialized=external` model.
+def _ensure_external_dirs(
+    runner, logger: logging.Logger, vars_override: str | None = None, select: str | None = None
+) -> None:
+    """Pre-create parent dirs for `materialized=external` models that will actually run.
 
     DuckDB's COPY TO does not create nested parent directories. For locations
     like `data/exports/<client>/<model>/v=<date>/...`, the run fails with an
-    IO Error if the dir doesn't already exist. We parse the project first,
-    walk the manifest, and `mkdir -p` each external model's parent.
+    IO Error if the dir doesn't already exist. We resolve which models will run
+    via `dbt ls` (respecting --select), then mkdir only those.
     """
     import json
     from pathlib import Path
@@ -154,9 +156,30 @@ def _ensure_external_dirs(runner, logger: logging.Logger, vars_override: str | N
     if not manifest_path.exists():
         return
 
+    # Resolve which models will actually run using `dbt ls`.
+    ls_cmd = ["ls", "--profiles-dir", dbt_dir, "--project-dir", dbt_dir, "--resource-type", "model"]
+    if vars_override:
+        ls_cmd.extend(["--vars", vars_override])
+    if select:
+        ls_cmd.extend(["--select", select])
+    ls_res = runner.invoke(ls_cmd)
+    if not ls_res.success:
+        return
+
+    # `dbt ls` outputs "project.model_name" per line; extract the model names.
+    selected_names: set[str] = set()
+    for line in (ls_res.result or []):
+        line = str(line).strip()
+        if "." in line:
+            selected_names.add(line.split(".", 1)[1])
+        elif line:
+            selected_names.add(line)
+
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     for node in manifest.get("nodes", {}).values():
         if node.get("resource_type") != "model":
+            continue
+        if node.get("name") not in selected_names:
             continue
         cfg = node.get("config", {}) or {}
         if cfg.get("materialized") != "external":
@@ -183,10 +206,11 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     # Injeta paths absolutas — dbtRunner resolve paths relativas contra o cwd do
     # processo (não contra --project-dir), então não podemos depender de relativos.
     os.environ["TERRASYNC_DUCKDB_PATH"] = str(DUCKDB_PATH)
+    os.environ["TERRASYNC_DATA_ROOT"] = DATA_DIR.as_posix()
     vars_override = json.dumps({"data_root": DATA_DIR.as_posix()})
 
     runner = dbtRunner()
-    _ensure_external_dirs(runner, logger, vars_override)
+    _ensure_external_dirs(runner, logger, vars_override, select=args.select)
 
     dbt_args = ["run"]
     if args.full_refresh:
