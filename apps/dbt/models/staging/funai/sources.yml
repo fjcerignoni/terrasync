@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: rawdata_funai
+    description: Rawdata FUNAI — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: funai
+        description: Terras indígenas homologadas e em processo (FUNAI).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/funai/*.parquet')"

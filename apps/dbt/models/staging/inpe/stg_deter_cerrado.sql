@@ -3,4 +3,4 @@
     location=staging_path('stg_deter_cerrado')
 ) }}
 
-{{ clean_geometry(rawdata_path('deter', glob='deter_cerrado.parquet'), source_epsg=4674) }}
+{{ clean_geometry(relation="SELECT * FROM " ~ source('rawdata_inpe', 'deter_cerrado'), source_epsg=4674) }}

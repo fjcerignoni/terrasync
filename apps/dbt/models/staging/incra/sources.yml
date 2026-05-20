@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: rawdata_incra
+    description: Rawdata INCRA — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: incra_sigef
+        description: >-
+          SIGEF — 2 parquets (privado + público). filename expõe o filepath
+          para derivar a coluna tipo no staging.
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/incra_sigef/*.parquet', filename=true)"
+      - name: incra_snci
+        description: >-
+          SNCI — 2 parquets (privado + público). filename expõe o filepath
+          para derivar a coluna tipo no staging.
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/incra_snci/*.parquet', filename=true)"
+      - name: incra_assentamentos
+        description: Projetos de assentamento federal (INCRA).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/incra_assentamentos/*.parquet')"
+      - name: incra_quilombolas
+        description: Territórios quilombolas federais (INCRA/ITERPA).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/incra_quilombolas/*.parquet')"

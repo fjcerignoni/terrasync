@@ -23,7 +23,7 @@ SELECT
     municipio_,
     uf_id,
     geometry
-FROM read_parquet('{{ rawdata_path("incra_sigef") }}', filename = true)
+FROM {{ source('rawdata_incra', 'incra_sigef') }}
 {% endset %}
 
 {{ clean_geometry(relation=sigef_source, source_epsg=4674) }}

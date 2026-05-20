@@ -21,7 +21,7 @@ SELECT
     m_fiscal,
     tipo_imovel,
     geometry
-FROM read_parquet('{{ rawdata_path("sicar") }}', union_by_name = true)
+FROM {{ source('rawdata_sicar', 'sicar') }}
 {% endset %}
 
 {{ clean_geometry(relation=sicar_source, source_epsg=4674) }}

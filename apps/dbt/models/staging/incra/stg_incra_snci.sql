@@ -19,7 +19,7 @@ SELECT
     nome_imove,
     uf_municip,
     geometry
-FROM read_parquet('{{ rawdata_path("incra_snci") }}', filename = true)
+FROM {{ source('rawdata_incra', 'incra_snci') }}
 {% endset %}
 
 {{ clean_geometry(relation=snci_source, source_epsg=4674) }}

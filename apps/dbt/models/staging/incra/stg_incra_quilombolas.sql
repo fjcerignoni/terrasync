@@ -3,4 +3,4 @@
     location=staging_path('stg_incra_quilombolas')
 ) }}
 
-{{ clean_geometry(rawdata_path('incra_quilombolas'), source_epsg=4674) }}
+{{ clean_geometry(relation="SELECT * FROM " ~ source('rawdata_incra', 'incra_quilombolas'), source_epsg=4674) }}

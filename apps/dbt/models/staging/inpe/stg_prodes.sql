@@ -28,7 +28,7 @@ SELECT
     satellite,
     sensor,
     ST_Force2D(geometry) AS geometry
-FROM read_parquet('{{ rawdata_path("prodes") }}', union_by_name = true, filename = true)
+FROM {{ source('rawdata_inpe', 'prodes') }}
 {% endset %}
 
 {{ clean_geometry(relation=prodes_source, source_epsg=4674) }}

@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: rawdata_inpe
+    description: Rawdata INPE — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: deter_amazonia
+        description: Alertas DETER Amazônia (WFS deter-amz:deter_amz).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/deter/deter_amazonia.parquet')"
+      - name: deter_cerrado
+        description: Alertas DETER Cerrado (WFS deter-cerrado-nb:deter_cerrado).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/deter/deter_cerrado.parquet')"
+      - name: prodes
+        description: >-
+          Desmatamento anual PRODES — 6 biomas em parquets separados
+          (prodes_{biome}.parquet). union_by_name alinha schema divergente;
+          filename expõe o filepath para derivar a coluna biome no staging.
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/prodes/*.parquet', union_by_name=true, filename=true)"

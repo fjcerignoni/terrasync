@@ -3,4 +3,4 @@
     location=staging_path('stg_deter_amazonia')
 ) }}
 
-{{ clean_geometry(rawdata_path('deter', glob='deter_amazonia.parquet'), source_epsg=4674) }}
+{{ clean_geometry(relation="SELECT * FROM " ~ source('rawdata_inpe', 'deter_amazonia'), source_epsg=4674) }}

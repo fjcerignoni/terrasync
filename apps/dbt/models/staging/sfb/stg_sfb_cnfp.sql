@@ -3,4 +3,4 @@
     location=staging_path('stg_sfb_cnfp')
 ) }}
 
-{{ clean_geometry(rawdata_path('sfb', glob='sfb_cnfp.parquet'), source_epsg=4674) }}
+{{ clean_geometry(relation="SELECT * FROM " ~ source('rawdata_sfb', 'sfb_cnfp'), source_epsg=4674) }}

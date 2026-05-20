@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: rawdata_sicar
+    description: Rawdata SICAR — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: sicar
+        description: >-
+          Cadastro Ambiental Rural — 27 parquets (1 por UF). union_by_name
+          alinha o schema divergente entre UFs (ex.: data_atualizacao ausente
+          em 12 UFs).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/sicar/*.parquet', union_by_name=true)"

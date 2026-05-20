@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: rawdata_sfb
+    description: Rawdata SFB — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: sfb_cnfp
+        description: Cadastro Nacional de Florestas Públicas (SFB).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/sfb/sfb_cnfp.parquet')"
