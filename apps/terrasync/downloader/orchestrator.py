@@ -6,7 +6,7 @@ import asyncio
 
 import httpx
 
-from ..config import ArcGISSource, DataSource, WFSSource, ZipShapefileSource
+from ..config import ArcGISSource, CsvApiSource, DataSource, WFSSource, ZipShapefileSource
 from .arcgis import download_arcgis_layer
 from .io import make_ssl_context
 from .wfs_json import download_wfs_layer
@@ -53,6 +53,12 @@ async def download_all(
         layer_ids = layers or source.layer_ids
         for lid in layer_ids:
             await asyncio.to_thread(download_zip_layer, source, lid, reset)
+
+    elif isinstance(source, CsvApiSource):
+        from .csv_api import download_csv_api_source
+        await asyncio.to_thread(
+            download_csv_api_source, source, layers or source.layer_ids, reset
+        )
 
 
 async def download_layer(

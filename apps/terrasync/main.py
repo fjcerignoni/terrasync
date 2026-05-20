@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -8,7 +9,23 @@ from .catalog import refresh_catalog
 from .config import SOURCES, SOURCE_GROUPS, resolve_sources
 from .downloader import download_all
 from .logging_config import setup_logging
-from .paths import DBT_DIR, DBT_TARGET
+from .paths import DBT_DIR, DBT_TARGET, repo_root
+
+
+def _load_dotenv() -> None:
+    """Carrega .env da raiz do repo sem depender de python-dotenv."""
+    env_file = repo_root() / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 _VALID_SOURCE_CHOICES = sorted(set(list(SOURCES) + list(SOURCE_GROUPS) + ["all"]))
 
@@ -254,6 +271,7 @@ def _run_status(args: argparse.Namespace, logger: logging.Logger) -> None:
 
 
 def run() -> None:
+    _load_dotenv()
     args = _parse_args()
     logger = setup_logging()
 

@@ -163,7 +163,34 @@ class ZipShapefileSource(BaseModel):
         raise ValueError(f"No url configured for layer {layer_id!r} in source {self.name!r}")
 
 
-DataSource = WFSSource | ArcGISSource | ZipShapefileSource
+class CsvApiSource(BaseModel):
+    type: Literal["csv_api"] = "csv_api"
+    name: str = ""
+    display_name: str = ""
+    description: str = ""
+    category: str = "events"
+    provider: str | None = None
+    cadence: Cadence = "daily"
+    epsg: int = 4326
+    url_template: str
+    api_key_env: str | None = None
+    lat_col: str = "latitude"
+    lon_col: str = "longitude"
+    temporal: bool = False
+    start_date: str | None = None
+    chunk_days: int = 1
+    layers: list[LayerMeta]
+
+    @property
+    def rawdata_dir(self) -> Path:
+        return RAWDATA_DIR / self.name
+
+    @property
+    def layer_ids(self) -> list[str]:
+        return [l.id for l in self.layers]
+
+
+DataSource = WFSSource | ArcGISSource | ZipShapefileSource | CsvApiSource
 
 
 def source_parquet_path(source: "DataSource", layer_id: str) -> Path:
@@ -202,6 +229,8 @@ def _load_catalog(
             src = ArcGISSource(**cfg)
         elif src_type == "zip_shapefile":
             src = ZipShapefileSource(**cfg)
+        elif src_type == "csv_api":
+            src = CsvApiSource(**cfg)
         else:
             raise ValueError(f"Unknown source type: {src_type} for {key}")
         src.name = key

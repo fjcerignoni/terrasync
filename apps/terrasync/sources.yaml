@@ -5,6 +5,8 @@
 providers:
   inpe:
     display_name: "INPE - Instituto Nacional de Pesquisas Espaciais"
+  nasa:
+    display_name: "NASA - National Aeronautics and Space Administration"
   incra:
     display_name: "INCRA - Instituto Nacional de Colonização e Reforma Agrária"
   ibge:
@@ -23,6 +25,27 @@ providers:
 # ---------------------------------------------------------------------------
 
 sources:
+
+  # --- NASA ---
+
+  nasa_firms:
+    type: csv_api
+    display_name: "NASA FIRMS – VIIRS NOAA-20 Active Fire"
+    description: "Focos de calor 375m (VIIRS/NOAA-20) via NASA FIRMS API, filtro Brasil."
+    category: events
+    provider: nasa
+    cadence: daily
+    url_template: "https://firms.modaps.eosdis.nasa.gov/api/area/csv/{api_key}/VIIRS_NOAA20_NRT/-74,-34,-29,6/{chunk_days}/{date}"
+    api_key_env: FIRMS_MAP_KEY
+    lat_col: latitude
+    lon_col: longitude
+    temporal: true
+    start_date: "2026-01-01"
+    chunk_days: 5
+    layers:
+      - id: viirs_noaa20
+        name: "VIIRS NOAA-20 NRT"
+        geometry_type: Point
 
   # --- INPE ---
 

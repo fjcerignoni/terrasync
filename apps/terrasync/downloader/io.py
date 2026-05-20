@@ -63,10 +63,11 @@ def save_geodataframe(
     *,
     acquired_at: str,
     endpoint: str,
+    out_path: Path | None = None,
 ) -> None:
     if gdf.crs is None:
         gdf.set_crs(epsg=source.epsg, inplace=True)
-    out_path = parquet_path(source, layer_id)
+    path = out_path or parquet_path(source, layer_id)
 
     # Roundtrip through an in-memory buffer so geopandas writes its geo schema
     # metadata, then we merge our terrasync.* keys before flushing to disk.
@@ -79,5 +80,5 @@ def save_geodataframe(
         acquired_at=acquired_at, endpoint=endpoint, n_features=len(gdf),
     )
     merged = {**(table.schema.metadata or {}), **extra}
-    pq.write_table(table.replace_schema_metadata(merged), out_path)
-    logger.info("[%s] Done: %d features saved to %s.", layer_id, len(gdf), out_path)
+    pq.write_table(table.replace_schema_metadata(merged), path)
+    logger.info("[%s] Done: %d features saved to %s.", layer_id, len(gdf), path)
