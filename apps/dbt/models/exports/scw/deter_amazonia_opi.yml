@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: deter_amazonia_opi
+    description: >-
+      Export do cliente scw / projeto opi. Alertas de desmatamento DETER Amazônia
+      (INPE) sem recorte temático — toda a extensão do staging stg_deter_amazonia,
+      geometria validada e projetada em EPSG:4326. Materializado como parquet
+      versionado em data/exports/scw/deter_amazonia_opi/v=YYYY-MM-DD/.
+    columns:
+      - name: gid
+        data_type: VARCHAR
+        description: Identificador do alerta na fonte WFS DETER.
+        tests:
+          - not_null
+          - unique
+      - name: classname
+        data_type: VARCHAR
+        description: "Classe do alerta (ex.: DESMATAMENTO_VEG, DEGRADACAO, CICATRIZ_DE_QUEIMADA)."
+        tests:
+          - not_null
+      - name: quadrant
+        data_type: VARCHAR
+        description: Quadrante de referência do mosaico de imagens.
+      - name: path_row
+        data_type: VARCHAR
+        description: Path/row do satélite de referência da detecção.
+      - name: view_date
+        data_type: VARCHAR
+        description: Data de detecção do alerta (texto ISO 8601, como vem da fonte).
+        tests:
+          - not_null
+      - name: sensor
+        data_type: VARCHAR
+        description: "Sensor utilizado na detecção (ex.: OLI, MSS, TM)."
+      - name: satellite
+        data_type: VARCHAR
+        description: "Satélite utilizado na detecção (ex.: LANDSAT_8, SENTINEL-2)."
+      - name: areauckm
+        data_type: DOUBLE
+        description: Área do alerta dentro de Unidade de Conservação, em km² (campo da fonte).
+      - name: uc
+        data_type: VARCHAR
+        description: Nome da Unidade de Conservação interceptada, quando aplicável.
+      - name: areamunkm
+        data_type: DOUBLE
+        description: Área do alerta dentro do município, em km² (campo da fonte).
+      - name: municipality
+        data_type: VARCHAR
+        description: Nome do município onde o alerta foi detectado.
+      - name: mun_geocod
+        data_type: VARCHAR
+        description: Código geográfico IBGE do município.
+      - name: uf
+        data_type: VARCHAR
+        description: Unidade federativa do alerta.
+        tests:
+          - not_null
+      - name: publish_month
+        data_type: VARCHAR
+        description: Mês de publicação oficial do alerta no DETER (texto, como vem da fonte).
+      - name: area_ha_calc
+        data_type: DOUBLE
+        description: >-
+          Área em hectares computada pelo sistema a partir da geometria, via
+          reprojeção equal-area EPSG:5880 (macro area_ha). Sufixo _calc marca campo
+          gerado — distinto de areauckm/areamunkm, que vêm da fonte.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON do alerta em EPSG:4326.
+        tests:
+          - not_null
