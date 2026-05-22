@@ -33,9 +33,8 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
   - `{{ bronze_path('source') }}` → `../../data/bronze/<source>/*.parquet` (aceita `glob=` para padrão custom).
   - `{{ staging_path('stg_modelo') }}` → `../../data/staging/<stg_modelo>.parquet` (usar em `location=`).
   - `{{ export_path('cliente', 'modelo') }}` → `../../data/exports/<cliente>/<modelo>/v=<YYYY-MM-DD>` (versão via `var('<cliente>_data_version')`, default `run_started_at`).
-- **Adicionar source nova** = editar `apps/terrasync/sources.yaml` + criar `apps/dbt/models/staging/stg_*.sql` chamando `{{ clean_geometry(bronze_path('<source>'), source_epsg=4674) }}` + criar `stg_*.yml` co-localizado. Não há código Python novo a escrever para WFS/ArcGIS/ZIP padrão.
-- **`clean_geometry` aceita `relation=`** além de `parquet_path`: quando o `stg_*` precisa abrir colunas explicitamente (fonte com schema divergente, ex.: `stg_sicar`), montar um `{% set %}` com o `SELECT` (usando `{{ bronze_path(...) }}` no `read_parquet`) e passar via `clean_geometry(relation=..., source_epsg=...)`. O gateway de staging continua único.
-- **Export de cliente** = `apps/dbt/models/exports/<cliente>/<modelo>.sql` (+ `.yml` co-localizado). Recorta o tronco compartilhado (`ref('stg_*')`) para um entregável de cliente; **não é silver**. Materializado `external`, `location=export_path('<cliente>', '<modelo>') ~ '/<modelo>.parquet'`.
+- **Adicionar fonte poligonal** → ver `docs/workflows/add_polygon_source.md`. Resumo: `sources.yaml` + `sources.yml` dbt + `stg_*.sql` + `schema.yml`. Sem código Python novo para WFS/ArcGIS/ZIP.
+- **Export de cliente** → ver `docs/workflows/add_client_export.md`. Resumo: `exports/<client>/<model>.sql` + `.yml` co-localizado; recorte do staging compartilhado para entregável de cliente, **não é silver**.
 - **Sufixo `_calc`** marca coluna gerada pelo sistema (ex.: `area_ha_calc` via `area_ha`), distinta de campo homônimo vindo da fonte.
 - Pandas só no downloader (I/O heterogêneo). Em SQL, preferir DuckDB → PostGIS.
 
@@ -61,6 +60,7 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 
 - **Diagrama, escopo, decisões consolidadas, glossário, estrutura de pastas**: `docs/architecture.md`.
 - **Design futuro silver/gold** (coverage types, tiling, templates canônicos): `docs/blueprint_geo_pipeline.md`.
+- **Receitas de workflow** (fonte poligonal, export de cliente): `docs/workflows/`.
 - **Histórico de sessões e decisões em andamento**: `ai_history.md` (ler apenas se a pergunta for sobre "por que decidimos X" ou estado de pendências).
 
 ## Em andamento
