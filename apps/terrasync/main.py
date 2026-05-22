@@ -188,7 +188,7 @@ def _ensure_external_dirs(
     for line in (ls_res.result or []):
         line = str(line).strip()
         if "." in line:
-            selected_names.add(line.split(".", 1)[1])
+            selected_names.add(line.split(".")[-1])
         elif line:
             selected_names.add(line)
 
