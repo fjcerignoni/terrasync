@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: rawdata_anm
+    description: Rawdata ANM — parquets baixados pelo terrasync ingest.
+    tables:
+      - name: sigmine
+        description: Processos minerários (ANM/SIGMINE) — Brasil inteiro.
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/sigmine/sigmine_brasil.parquet')"

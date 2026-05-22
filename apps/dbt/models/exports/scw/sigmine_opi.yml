@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: sigmine_opi
+    description: >-
+      Export do cliente scw / projeto opi. Processos minerários ativos ANM/SIGMINE,
+      Brasil inteiro, sem recorte temático — toda a extensão do staging stg_sigmine,
+      geometria validada e projetada em EPSG:4326. Materializado como parquet
+      versionado em data/exports/scw/sigmine_opi/v=YYYY-MM-DD/.
+    columns:
+      - name: processo
+        data_type: VARCHAR
+        description: Identificador do processo minerário (NNNNNN/AAAA).
+        tests:
+          - not_null
+      - name: id
+        data_type: VARCHAR
+        description: Identificador da poligonal do processo.
+        tests:
+          - not_null
+      - name: numero
+        data_type: INTEGER
+        description: Número do processo minerário (até 6 dígitos).
+      - name: ano
+        data_type: INTEGER
+        description: Ano do processo minerário.
+      - name: area_ha
+        data_type: DOUBLE
+        description: Área da poligonal em hectares conforme cadastro ANM (campo da fonte).
+      - name: fase
+        data_type: VARCHAR
+        description: Fase do processo de acordo com o regime de aproveitamento minerário.
+        tests:
+          - not_null
+      - name: ult_evento
+        data_type: VARCHAR
+        description: Último evento associado ao processo no Sistema Cadastro Mineiro.
+      - name: nome
+        data_type: VARCHAR
+        description: Nome ou razão social do requerente/titular do processo.
+      - name: subs
+        data_type: VARCHAR
+        description: Substância associada ao processo minerário.
+      - name: uso
+        data_type: VARCHAR
+        description: Uso da substância descrita em subs.
+      - name: uf
+        data_type: VARCHAR
+        description: Unidade da Federação do processo minerário.
+      - name: ds_processo
+        data_type: VARCHAR
+        description: Identificador com formatação completa (NNN.NNN/AAAA).
+      - name: area_ha_calc
+        data_type: DOUBLE
+        description: >-
+          Área em hectares computada pelo sistema a partir da geometria, via
+          reprojeção equal-area EPSG:5880 (macro area_ha). Sufixo _calc marca campo
+          gerado — distinto de area_ha, que vem da fonte ANM.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON em EPSG:4326.
+        tests:
+          - not_null

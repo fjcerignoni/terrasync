@@ -19,6 +19,8 @@ providers:
     display_name: "FUNAI - Fundação Nacional dos Povos Indígenas"
   mma:
     display_name: "MMA - Ministério do Meio Ambiente"
+  anm:
+    display_name: "ANM - Agência Nacional de Mineração"
 
 # ---------------------------------------------------------------------------
 # Sources (connectors)
@@ -263,6 +265,21 @@ sources:
     layers:
       - id: tis_poligonais
         name: "Terras Indígenas"
+
+  # --- ANM ---
+
+  sigmine:
+    type: zip_shapefile
+    display_name: "ANM - SIGMINE (Processos Minerários)"
+    description: "Polígonos dos processos minerários ativos (incluindo áreas em disponibilidade) mantidos pela ANM."
+    category: mining
+    provider: anm
+    cadence: daily
+    epsg: 4674
+    encoding: UTF-8
+    layers:
+      - id: brasil
+        url: "https://dadosabertos.anm.gov.br/SIGMINE/PROCESSOS_MINERARIOS/BRASIL.zip"
 
   # --- MMA ---
 
