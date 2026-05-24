@@ -17,18 +17,19 @@ models:
         tests:
           - not_null
 
-  - name: stg_deter_amazonia
-    description: Staging DETER Amazônia — alertas de desmatamento em tempo real.
+  - name: stg_deter
+    description: >-
+      Staging DETER unificado — alertas de desmatamento em tempo real (Amazônia + Cerrado).
+      biome identifica a origem ('amazonia' ou 'cerrado'). UNION ALL BY NAME alinha schema
+      divergente entre as duas fontes. Geometrias MULTIPOLYGON em EPSG:4326.
     columns:
-      - name: geometry
-        data_type: GEOMETRY
-        description: MULTIPOLYGON EPSG:4326.
+      - name: biome
+        data_type: VARCHAR
+        description: Bioma de origem do alerta ('amazonia' ou 'cerrado').
         tests:
           - not_null
-
-  - name: stg_deter_cerrado
-    description: Staging DETER Cerrado — alertas de desmatamento em tempo real.
-    columns:
+          - accepted_values:
+              values: ['amazonia', 'cerrado']
       - name: geometry
         data_type: GEOMETRY
         description: MULTIPOLYGON EPSG:4326.

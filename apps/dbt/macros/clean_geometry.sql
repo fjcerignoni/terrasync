@@ -7,9 +7,6 @@ WITH raw AS (
     {%- endif %}
 ),
 flattened AS (
-    -- ST_Force2D antes de tudo: descarta Z/M. Sem isso, geometrias com vertices
-    -- de dimensoes mistas estouram ST_MakeValid com "Overlay input is mixed-dimension".
-    -- Z/M nao tem uso a jusante neste pipeline (CRS storage 2D, EPSG:4326).
     SELECT
         * EXCLUDE (geometry),
         ST_Force2D(geometry) AS geometry

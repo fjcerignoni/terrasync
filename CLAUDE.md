@@ -65,7 +65,7 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 
 ## Em andamento
 
-- **bdqueimadas (focos de calor)**: plano definido. Próximo passo = validar acesso WFS INPE (layer names desconhecidos) ou usar NASA FIRMS API como alternativa. Decidir abordagem antes de implementar.
+- **bdqueimadas (focos de calor)**: plano definido. Próximo passo = validar acesso WFS INPE (layer names desconhecidos). Decidir abordagem antes de implementar.
 - **geometria multi-tipo**: macros separadas por tipo de vetor (`clean_geometry` polígono, `clean_point_geometry`, `clean_line_geometry`) — criar sob demanda conforme novas fontes exigirem. Raster/análise matricial no horizonte, sem prazo.
 
 ## Após mudança arquitetônica

@@ -24,4 +24,5 @@ SELECT
     publish_month,
     {{ area_ha('geometry') }} AS area_ha_calc,
     geometry
-FROM {{ ref('stg_deter_amazonia') }}
+FROM {{ ref('stg_deter') }}
+WHERE biome = 'amazonia'
