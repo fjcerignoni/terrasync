@@ -1,0 +1,31 @@
+version: 2
+models:
+  - name: bro_anm_sigmine
+    description: >-
+      Bronze ANM SIGMINE — processos minerários ativos, Brasil
+      inteiro. Colunas renomeadas para lowercase; sem dedup
+      (processo+id é a PK composta da fonte).
+    config:
+      tags: ['bronze']
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de processo|id."
+        tests:
+          - not_null
+          - unique
+      - name: processo
+        data_type: VARCHAR
+        description: "Identificador do processo (NNNNNN/AAAA)."
+        tests:
+          - not_null
+      - name: id
+        data_type: VARCHAR
+        description: "Identificador da poligonal do processo."
+        tests:
+          - not_null
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null

@@ -1,21 +1,36 @@
-{% macro clean_point_geometry(parquet_path=none, source_epsg=4326, relation=none) %}
-WITH raw AS (
+{% macro clean_point_geometry(parquet_path=none, source_epsg=4326, relation=none, id_columns=none, dedup_id=none, dedup_date=none) %}
+with raw as (
     {% if relation is not none -%}
     {{ relation }}
     {%- else -%}
-    SELECT * FROM read_parquet('{{ parquet_path }}')
+    select * from read_parquet('{{ parquet_path }}')
     {%- endif %}
 ),
-flattened AS (
-    SELECT
-        * EXCLUDE (geometry),
-        ST_Force2D(geometry) AS geometry
-    FROM raw
-    WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)
+{% if dedup_id is not none %}
+deduped as (
+    select * exclude (_rn)
+    from (
+        select
+            *,
+            row_number() over (
+                partition by {{ dedup_id | join(', ') }}
+                {% if dedup_date %}order by {{ dedup_date }} desc nulls last{% endif %}
+            ) as _rn
+        from raw
+    )
+    where _rn = 1
 ),
-reprojected AS (
-    SELECT
-        * EXCLUDE (geometry),
+{% endif %}
+flattened as (
+    select
+        * exclude (geometry),
+        ST_Force2D(geometry) as geometry
+    from {% if dedup_id is not none %}deduped{% else %}raw{% endif %}
+    where geometry is not null and not ST_IsEmpty(geometry)
+),
+reprojected as (
+    select
+        * exclude (geometry),
         {% if source_epsg == 4326 %}
         geometry
         {% else %}
@@ -24,14 +39,25 @@ reprojected AS (
             'EPSG:{{ source_epsg }}',
             'EPSG:4326',
             always_xy := true
-        ) AS geometry
+        ) as geometry
         {% endif %}
-    FROM flattened
+    from flattened
 )
-SELECT *
-FROM reprojected
-WHERE geometry IS NOT NULL
-  AND NOT ST_IsEmpty(geometry)
-  AND ST_X(geometry) >= -180 AND ST_Y(geometry) >= -90
-  AND ST_X(geometry) <= 180  AND ST_Y(geometry) <= 90
+select
+    {% if id_columns is not none %}
+    md5(concat_ws('|',
+        {% for expr in id_columns %}
+        cast({{ expr }} as varchar){% if not loop.last %},{% endif %}
+        {% endfor %}
+    )) as stg_id,
+    {% else %}
+    md5(ST_AsText(geometry)) as stg_id,
+    {% endif %}
+    * exclude (geometry),
+    geometry
+from reprojected
+where geometry is not null
+  and not ST_IsEmpty(geometry)
+  and ST_X(geometry) >= -180 and ST_Y(geometry) >= -90
+  and ST_X(geometry) <= 180  and ST_Y(geometry) <= 90
 {% endmacro %}

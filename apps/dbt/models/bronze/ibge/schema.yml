@@ -1,10 +1,19 @@
 ﻿version: 2
 models:
   - name: bro_ibge_municipios
-    description: "Bronze IBGE — Municípios 2025."
+    description: >-
+      Bronze IBGE — Municípios 2025. Dedup pendente: verificar colunas
+      do rawdata (candidato: cd_mun — sem campo data, dedup por cd_mun
+      apenas).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

@@ -1,10 +1,18 @@
 ﻿version: 2
 models:
   - name: bro_funai_tis_poligonais
-    description: "Bronze FUNAI — Terras Indígenas poligonais."
+    description: >-
+      Bronze FUNAI — Terras Indígenas poligonais. Dedup pendente:
+      verificar colunas do rawdata (candidatos: terrai_cod).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

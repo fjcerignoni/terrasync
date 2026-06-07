@@ -1,10 +1,18 @@
 ﻿version: 2
 models:
   - name: bro_mma_cnuc
-    description: "Bronze MMA — CNUC Unidades de Conservação."
+    description: >-
+      Bronze MMA — CNUC Unidades de Conservação. Dedup pendente:
+      verificar colunas do rawdata (candidatos: cod_uc, nome_uc).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

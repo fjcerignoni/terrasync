@@ -1,80 +1,244 @@
 ﻿version: 2
 models:
   - name: bro_prodes_amazonia
-    description: "Bronze PRODES amazonia — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES amazonia — clean_geometry(rawdata, 4674->4326).
+      Dedup por uuid, keep mais recente por image_date.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uuid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Identificador único do polígono PRODES (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'amazonia'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_prodes_cerrado
-    description: "Bronze PRODES cerrado — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES cerrado — clean_geometry(rawdata, 4674->4326).
+      Dedup por uuid (gerado de uid), keep mais recente por
+      image_date.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Surrogate key gerado de uid via dbt_utils."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'cerrado'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_prodes_caatinga
-    description: "Bronze PRODES caatinga — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES caatinga — clean_geometry(rawdata, 4674->4326).
+      Dedup por uuid, keep mais recente por image_date.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uuid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Identificador único do polígono PRODES (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'caatinga'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_prodes_mata_atlantica
-    description: "Bronze PRODES mata_atlantica — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES mata_atlantica — clean_geometry(rawdata,
+      4674->4326). Dedup por uuid, keep mais recente por image_date.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uuid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Identificador único do polígono PRODES (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'mata_atlantica'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_prodes_pantanal
-    description: "Bronze PRODES pantanal — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES pantanal — clean_geometry(rawdata, 4674->4326).
+      Dedup por uuid, keep mais recente por image_date.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uuid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Identificador único do polígono PRODES (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'pantanal'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_prodes_pampa
-    description: "Bronze PRODES pampa — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze PRODES pampa — clean_geometry(rawdata, 4674->4326).
+      Dedup por uuid, keep mais recente por image_date.
+      scene_id castado para DOUBLE (fonte entrega BIGINT).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de uuid."
+        tests:
+          - not_null
+          - unique
+      - name: uuid
+        data_type: VARCHAR
+        description: "Identificador único do polígono PRODES (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'pampa'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
-  - name: bro_deter_amazonia
-    description: "Bronze DETER amazonia — clean_geometry(rawdata, 4674->4326)."
+  - name: bro_inpe_bdqueimadas
+    description: >-
+      Bronze BDQueimadas — focos de calor, point geometry EPSG:4326.
+      Dedup pendente: sem chave natural única identificada; analisar
+      colunas do rawdata.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: >-
+          Surrogate key MD5 de data_hora|satelite|ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
+      - name: geometry
+        data_type: geometry
+        description: "POINT EPSG:4326 — saida do clean_point_geometry."
+        tests:
+          - not_null
+  - name: bro_deter_amazonia
+    description: >-
+      Bronze DETER amazonia — clean_geometry(rawdata, 4674->4326).
+      Dedup pendente: verificar colunas do WFS (candidatos: gid,
+      view_date).
+    config:
+      tags: ['bronze']
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'amazonia'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_deter_cerrado
-    description: "Bronze DETER cerrado — clean_geometry(rawdata, 4674->4326)."
+    description: >-
+      Bronze DETER cerrado — clean_geometry(rawdata, 4674->4326).
+      Dedup pendente: verificar colunas do WFS (candidatos: gid,
+      view_date).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: "Bioma: 'cerrado'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

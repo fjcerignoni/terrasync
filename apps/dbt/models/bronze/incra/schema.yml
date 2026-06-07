@@ -1,60 +1,152 @@
 ﻿version: 2
 models:
   - name: bro_incra_sigef_privado
-    description: "Bronze INCRA SIGEF privado."
+    description: >-
+      Bronze INCRA SIGEF privado. Dedup por parcela_co, keep
+      mais recente por data_aprov.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de parcela_co."
+        tests:
+          - not_null
+          - unique
+      - name: parcela_co
+        data_type: VARCHAR
+        description: "Código da parcela certificada SIGEF (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: tipo
+        data_type: VARCHAR
+        description: "Regime fundiário: 'privado'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_incra_sigef_publico
-    description: "Bronze INCRA SIGEF publico."
+    description: >-
+      Bronze INCRA SIGEF publico. Dedup por parcela_co, keep
+      mais recente por data_aprov.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de parcela_co."
+        tests:
+          - not_null
+          - unique
+      - name: parcela_co
+        data_type: VARCHAR
+        description: "Código da parcela certificada SIGEF (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: tipo
+        data_type: VARCHAR
+        description: "Regime fundiário: 'publico'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_incra_snci_privado
-    description: "Bronze INCRA SNCI privado."
+    description: >-
+      Bronze INCRA SNCI privado. Dedup por num_certif, keep
+      mais recente por data_certi.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de num_certif."
+        tests:
+          - not_null
+          - unique
+      - name: num_certif
+        data_type: VARCHAR
+        description: "Número do certificado SNCI (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: tipo
+        data_type: VARCHAR
+        description: "Regime fundiário: 'privado'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_incra_snci_publico
-    description: "Bronze INCRA SNCI publico."
+    description: >-
+      Bronze INCRA SNCI publico. Dedup por num_certif, keep
+      mais recente por data_certi.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de num_certif."
+        tests:
+          - not_null
+          - unique
+      - name: num_certif
+        data_type: VARCHAR
+        description: "Número do certificado SNCI (PK da fonte)."
+        tests:
+          - not_null
+          - unique
+      - name: tipo
+        data_type: VARCHAR
+        description: "Regime fundiário: 'publico'."
+        tests:
+          - not_null
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_incra_assentamentos_brasil
-    description: "Bronze INCRA Assentamentos Brasil."
+    description: >-
+      Bronze INCRA Assentamentos Brasil. Dedup pendente: verificar
+      colunas do rawdata (candidatos: num_sipra, dt_criacao).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_incra_quilombolas_lim_quilombolas_a
-    description: "Bronze INCRA Quilombolas."
+    description: >-
+      Bronze INCRA Quilombolas. Dedup pendente: verificar colunas
+      do rawdata (candidatos: cod_comunidade).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

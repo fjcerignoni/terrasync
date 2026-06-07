@@ -4,4 +4,16 @@
     tags=['bronze']
 ) }}
 
-{{ clean_geometry(rawdata_path('deter', glob='deter_cerrado.parquet'), source_epsg=4674) }}
+{% set source_rel %}
+select *, 'cerrado' as biome
+from read_parquet(
+    '{{ rawdata_path("deter", glob="deter_cerrado.parquet") }}'
+)
+{% endset %}
+
+{{
+    clean_geometry(
+        relation=source_rel,
+        source_epsg=4674
+    )
+}}

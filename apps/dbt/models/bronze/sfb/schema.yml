@@ -1,10 +1,19 @@
 ﻿version: 2
 models:
   - name: bro_sfb_cnfp
-    description: "Bronze SFB — Cadastro Nacional de Florestas Públicas."
+    description: >-
+      Bronze SFB — Cadastro Nacional de Florestas Públicas. Dedup
+      pendente: verificar colunas do rawdata (candidatos: nome,
+      id_area).
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 fingerprint de ST_AsText(geometry)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."

@@ -1,270 +1,621 @@
-﻿version: 2
+version: 2
 models:
   - name: bro_sicar_ac
-    description: "Bronze SICAR AC."
+    description: >-
+      Bronze SICAR AC. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_al
-    description: "Bronze SICAR AL."
+    description: >-
+      Bronze SICAR AL. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_am
-    description: "Bronze SICAR AM."
+    description: >-
+      Bronze SICAR AM. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ap
-    description: "Bronze SICAR AP."
+    description: >-
+      Bronze SICAR AP. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ba
-    description: "Bronze SICAR BA."
+    description: >-
+      Bronze SICAR BA. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ce
-    description: "Bronze SICAR CE."
+    description: >-
+      Bronze SICAR CE. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_df
-    description: "Bronze SICAR DF."
+    description: >-
+      Bronze SICAR DF. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_es
-    description: "Bronze SICAR ES."
+    description: >-
+      Bronze SICAR ES. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_go
-    description: "Bronze SICAR GO."
+    description: >-
+      Bronze SICAR GO. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ma
-    description: "Bronze SICAR MA."
+    description: >-
+      Bronze SICAR MA. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_mg
-    description: "Bronze SICAR MG."
+    description: >-
+      Bronze SICAR MG. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ms
-    description: "Bronze SICAR MS."
+    description: >-
+      Bronze SICAR MS. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_mt
-    description: "Bronze SICAR MT."
+    description: >-
+      Bronze SICAR MT. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_pa
-    description: "Bronze SICAR PA."
+    description: >-
+      Bronze SICAR PA. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_pb
-    description: "Bronze SICAR PB."
+    description: >-
+      Bronze SICAR PB. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_pe
-    description: "Bronze SICAR PE."
+    description: >-
+      Bronze SICAR PE. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_pi
-    description: "Bronze SICAR PI."
+    description: >-
+      Bronze SICAR PI. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_pr
-    description: "Bronze SICAR PR."
+    description: >-
+      Bronze SICAR PR. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_rj
-    description: "Bronze SICAR RJ."
+    description: >-
+      Bronze SICAR RJ. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_rn
-    description: "Bronze SICAR RN."
+    description: >-
+      Bronze SICAR RN. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_ro
-    description: "Bronze SICAR RO."
+    description: >-
+      Bronze SICAR RO. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_rr
-    description: "Bronze SICAR RR."
+    description: >-
+      Bronze SICAR RR. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_rs
-    description: "Bronze SICAR RS."
+    description: >-
+      Bronze SICAR RS. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_sc
-    description: "Bronze SICAR SC."
+    description: >-
+      Bronze SICAR SC. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_se
-    description: "Bronze SICAR SE."
+    description: >-
+      Bronze SICAR SE. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_sp
-    description: "Bronze SICAR SP."
+    description: >-
+      Bronze SICAR SP. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
         tests:
           - not_null
   - name: bro_sicar_to
-    description: "Bronze SICAR TO."
+    description: >-
+      Bronze SICAR TO. Dedup por cod_imovel, keep mais recente por dat_criacao.
     config:
       tags: ['bronze']
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: "Surrogate key MD5 de cod_imovel."
+        tests:
+          - not_null
+          - unique
+      - name: cod_imovel
+        data_type: VARCHAR
+        description: "Codigo do imovel rural no CAR (PK da fonte SICAR)."
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: geometry
         description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
