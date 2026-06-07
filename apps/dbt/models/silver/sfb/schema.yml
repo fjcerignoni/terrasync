@@ -1,0 +1,18 @@
+﻿version: 2
+models:
+  - name: slv_sfb_cnfp
+    description: >-
+      Silver SFB — Cadastro Nacional de Florestas Publicas (CNFP).
+      Geometrias em EPSG:4326.
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 fingerprint de ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

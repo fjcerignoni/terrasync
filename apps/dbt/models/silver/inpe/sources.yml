@@ -4,6 +4,12 @@ sources:
   - name: rawdata_inpe
     description: Rawdata INPE — parquets baixados pelo terrasync ingest.
     tables:
+      - name: inpe_bdqueimadas
+        description: >-
+          Focos de calor BDQueimadas — rawdata parquet gerado por terrasync ingest
+          (csv_manual: lê data/cache/inpe_bdqueimadas_*.csv, cria geometry de Latitude/Longitude).
+        meta:
+          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/inpe_bdqueimadas/inpe_bdqueimadas_focos.parquet')"
       - name: deter_amazonia
         description: Alertas DETER Amazônia (WFS deter-amz:deter_amz).
         meta:

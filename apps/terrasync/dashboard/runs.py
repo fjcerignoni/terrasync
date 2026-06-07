@@ -7,8 +7,12 @@ Schema (from terrasync.manifest.build_entry):
 
 from __future__ import annotations
 
+from datetime import timedelta, timezone
+
 import pandas as pd
 import streamlit as st
+
+_BRT = timezone(timedelta(hours=-3))
 
 from ..config import MANIFESTS_DIR
 
@@ -38,6 +42,7 @@ def read_runs(mtime: float, limit: int = 500) -> pd.DataFrame:
         return df
     df["acquired_at"] = pd.to_datetime(df["acquired_at"], errors="coerce", utc=True)
     df = df.sort_values("acquired_at", ascending=False).head(limit).reset_index(drop=True)
+    df["acquired_at"] = df["acquired_at"].dt.tz_convert(_BRT)
     if "error" not in df.columns:
         df["error"] = None
     return df

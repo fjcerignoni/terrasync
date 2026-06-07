@@ -1,13 +1,19 @@
 ﻿version: 2
 models:
-  - name: stg_sicar
+  - name: slv_sicar
     description: >-
-      Staging SICAR — Cadastro Ambiental Rural (27 UFs). Schema divergente entre
+      Silver SICAR — Cadastro Ambiental Rural (27 UFs). Schema divergente entre
       UFs: 12 UFs sem data_atualizacao (PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE,
       SP, TO). union_by_name alinha os parquets; coluna ausente vira NULL.
       Geometrias MULTIPOLYGON em EPSG:4326. Layer overlapping — CAR sobreposicoes
       sao informacao valida.
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de cod_imovel.
+        tests:
+          - not_null
+          - unique
       - name: cod_imovel
         data_type: VARCHAR
         description: Codigo do imovel rural no CAR.

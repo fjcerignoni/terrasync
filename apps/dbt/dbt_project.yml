@@ -21,12 +21,12 @@ models:
   terrasync:
     bronze:
       +materialized: external
-    staging:
-      +materialized: external
     silver:
-      +materialized: table
-      +schema: silver
-      +contract:
-        enforced: true
+      +materialized: external
+      canonical:
+        +materialized: table
+        +schema: silver
+        +contract:
+          enforced: true
     exports:
       +materialized: external

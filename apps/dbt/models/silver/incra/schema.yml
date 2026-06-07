@@ -1,15 +1,23 @@
 ﻿version: 2
 models:
-  - name: stg_incra_sigef
+  - name: slv_incra_sigef
     description: >-
-      Staging unificado do SIGEF (Sistema de Gestao Fundiaria), combinando
+      Silver unificado do SIGEF (Sistema de Gestao Fundiaria), combinando
       parcelas privadas e publicas certificadas pelo INCRA. Campo tipo discrimina
       a origem. Layer overlapping — sobreposicoes entre parcelas sao informacao
       valida (sem ST_CoverageClean). Geometrias em EPSG:4326.
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de parcela_co.
+        tests:
+          - not_null
+          - unique
       - name: tipo
         data_type: VARCHAR
-        description: "Origem da parcela — 'privado' ou 'publico', derivado do filename rawdata."
+        description: >-
+          Origem da parcela — 'privado' ou 'publico', derivado
+          do filename rawdata.
         tests:
           - not_null
           - accepted_values:
@@ -62,15 +70,23 @@ models:
         tests:
           - not_null
 
-  - name: stg_incra_snci
+  - name: slv_incra_snci
     description: >-
-      Staging unificado do SNCI (Sistema Nacional de Certificacao de Imoveis),
+      Silver unificado do SNCI (Sistema Nacional de Certificacao de Imoveis),
       combinando imoveis privados e publicos certificados pelo INCRA. Campo tipo
       discrimina a origem. Geometrias em EPSG:4326.
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de tipo|num_certif.
+        tests:
+          - not_null
+          - unique
       - name: tipo
         data_type: VARCHAR
-        description: "Origem do imovel — 'privado' ou 'publico', derivado do filename rawdata."
+        description: >-
+          Origem do imovel — 'privado' ou 'publico', derivado
+          do filename rawdata.
         tests:
           - not_null
           - accepted_values:
@@ -108,18 +124,30 @@ models:
         tests:
           - not_null
 
-  - name: stg_incra_assentamentos
-    description: Staging INCRA Assentamentos — reforma agraria (Brasil inteiro).
+  - name: slv_incra_assentamentos
+    description: Silver INCRA Assentamentos — reforma agraria (Brasil inteiro).
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 fingerprint de ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: GEOMETRY
         description: MULTIPOLYGON EPSG:4326.
         tests:
           - not_null
 
-  - name: stg_incra_quilombolas
-    description: Staging INCRA Quilombolas — areas quilombolas reconhecidas.
+  - name: slv_incra_quilombolas
+    description: Silver INCRA Quilombolas — areas quilombolas reconhecidas.
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 fingerprint de ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
       - name: geometry
         data_type: GEOMETRY
         description: MULTIPOLYGON EPSG:4326.

@@ -1,0 +1,102 @@
+﻿version: 2
+models:
+  - name: slv_prodes
+    description: >-
+      Silver PRODES — desmatamento anual unificado (6 biomas). biome derivado
+      do filename. scene_id normalizado para DOUBLE (pampa usa BIGINT na fonte).
+      Geometrias MULTIPOLYGON em EPSG:4326.
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de bioma|uuid.
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: >-
+          Bioma (amazonia, cerrado, caatinga, mata_atlantica,
+          pantanal, pampa).
+        tests:
+          - not_null
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null
+
+  - name: slv_inpe_bdqueimadas
+    description: >-
+      Silver BDQueimadas — focos de calor detectados por satélite
+      (INPE). Geometria POINT em EPSG:4326, validada via
+      clean_point_geometry. Cobre todos os biomas brasileiros
+      conforme disponível no CSV exportado do bdqueimadas.inpe.br.
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: >-
+          Surrogate key MD5 de
+          data_hora|satelite|ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
+      - name: data_hora
+        data_type: TIMESTAMP
+        description: Data e hora da detecção do foco (UTC).
+        tests:
+          - not_null
+      - name: satelite
+        data_type: VARCHAR
+        description: Satélite que detectou o foco.
+      - name: estado
+        data_type: VARCHAR
+        description: Unidade federativa.
+      - name: municipio
+        data_type: VARCHAR
+        description: Município.
+      - name: bioma
+        data_type: VARCHAR
+        description: Bioma (Amazônia, Cerrado, Mata Atlântica, etc.).
+      - name: dia_sem_chuva
+        data_type: INTEGER
+        description: Número de dias consecutivos sem precipitação.
+      - name: precipitacao
+        data_type: DOUBLE
+        description: Precipitação acumulada (mm).
+      - name: risco_fogo
+        data_type: DOUBLE
+        description: Índice de risco de fogo (0 a 1).
+      - name: frp
+        data_type: DOUBLE
+        description: Fire Radiative Power — intensidade do foco (MW).
+      - name: geometry
+        data_type: GEOMETRY
+        description: POINT EPSG:4326.
+        tests:
+          - not_null
+
+  - name: slv_deter
+    description: >-
+      Silver DETER unificado — alertas de desmatamento em tempo real
+      (Amazônia + Cerrado). biome identifica a origem ('amazonia' ou
+      'cerrado'). UNION ALL BY NAME alinha schema divergente entre as
+      duas fontes. Geometrias MULTIPOLYGON em EPSG:4326.
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 fingerprint de ST_AsText(geometry).
+        tests:
+          - not_null
+          - unique
+      - name: biome
+        data_type: VARCHAR
+        description: Bioma de origem do alerta ('amazonia' ou 'cerrado').
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['amazonia', 'cerrado']
+      - name: geometry
+        data_type: GEOMETRY
+        description: MULTIPOLYGON EPSG:4326.
+        tests:
+          - not_null

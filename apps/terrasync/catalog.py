@@ -1,3 +1,5 @@
+"""DuckDB catalog management for terrasync bronze parquet views."""
+
 import logging
 
 import duckdb

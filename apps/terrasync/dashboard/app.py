@@ -3,19 +3,35 @@
 Tabs:
     - Visão geral: KPIs do pipeline.
     - Bronze health: linha por (source, layer) com freshness + counts.
-    - Staging health: linha por modelo stg_*, geom quality + dbt status.
+    - Silver health: linha por modelo slv_*, geom quality + dbt status.
     - Run history: últimas execuções de `runs.jsonl`.
     - Queries: SQL operacional do dashboard, auditável e executável on-demand.
 """
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-from terrasync.config import BRONZE_DIR, RAWDATA_DIR, SOURCE_GROUPS, SOURCES, STAGING_DIR
+_BRT = timezone(timedelta(hours=-3))
+
+
+def _fmt_brt(ts: str | None) -> str:
+    """Convert an ISO timestamp string to UTC-3, formatted without microseconds."""
+    if not ts:
+        return ""
+    try:
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(_BRT).isoformat(timespec="seconds")
+    except ValueError:
+        return ts
+
+from terrasync.config import BRONZE_DIR, RAWDATA_DIR, SILVER_DIR, SOURCE_GROUPS, SOURCES
 from terrasync.dashboard import dbt_artifacts
 from terrasync.dashboard.bronze import scan_bronze
 from terrasync.dashboard.rawdata import scan_rawdata
@@ -28,7 +44,7 @@ from terrasync.dashboard.queries import (
     validate_geometries,
 )
 from terrasync.dashboard.runs import read_runs, runs_mtime
-from terrasync.dashboard.staging import scan_staging
+from terrasync.dashboard.silver import scan_silver
 
 _PROBE_EMOJI = {"up": "✓", "slow": "⚠", "down": "✗", "unknown": "?"}
 _DBT_STATUS_EMOJI = {
@@ -197,7 +213,7 @@ def _tab_rawdata(rows: list[dict], group: str | None) -> None:
                 "cadence": r.get("cadence", "unknown"),
                 "category": r["category"],
                 "age (d)": round(r["age_days"], 1) if r["age_days"] is not None else None,
-                "acquired_at": r["acquired_at"] or "",
+                "acquired_at": _fmt_brt(r["acquired_at"]),
                 "n_features (footer)": r["n_features"],
                 "actual_rows": actual,
                 "Δ": "⚠️" if divergence else "",
@@ -271,16 +287,16 @@ def _format_deps(deps: list[str], limit: int = 3) -> str:
     return f"{', '.join(deps[:limit])}, +{len(deps) - limit}"
 
 
-def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
-    st.subheader("Staging health")
+def _tab_silver(silver_rows: list[dict], rawdata_rows: list[dict]) -> None:
+    st.subheader("Silver health")
     st.caption(
-        "Uma linha por modelo `stg_*` em `apps/dbt/models/staging/`. "
+        "Uma linha por modelo `slv_*` em `apps/dbt/models/silver/`. "
         "Modelos não materializados aparecem em cinza. "
         "Coluna `dbt status` reflete o último `dbt build`; geometrias validadas sob demanda."
     )
 
-    if not staging_rows:
-        st.info("Nenhum modelo staging encontrado.")
+    if not silver_rows:
+        st.info("Nenhum modelo silver encontrado.")
         return
 
     models = dbt_artifacts.model_summary()
@@ -288,7 +304,7 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
         rr_ts = dbt_artifacts.run_results_generated_at()
         mf_ts = dbt_artifacts.manifest_generated_at()
         st.info(
-            f"dbt manifest: `{mf_ts or '—'}` · última build: `{rr_ts or '—'}`"
+            f"dbt manifest: `{_fmt_brt(mf_ts) or '—'}` · última build: `{_fmt_brt(rr_ts) or '—'}`"
         )
     else:
         st.warning(
@@ -300,8 +316,8 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
     for r in rawdata_rows:
         rawdata_by_source[r["source"]] = rawdata_by_source.get(r["source"], 0) + r["n_features"]
 
-    built = [r for r in staging_rows if r["built"]]
-    not_built = [r for r in staging_rows if not r["built"]]
+    built = [r for r in silver_rows if r["built"]]
+    not_built = [r for r in silver_rows if not r["built"]]
 
     def _dbt_cells(model: str) -> dict:
         info = models.get(model)
@@ -333,7 +349,7 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
         }
 
     display: list[dict] = []
-    for r in staging_rows:
+    for r in silver_rows:
         dbt_cells = _dbt_cells(r["model"])
         if r["built"]:
             stats = geom_health(r["path"], r["mtime"])
@@ -345,7 +361,7 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
                     "model": r["model"],
                     "source": r["source"] or "(n/a)",
                     "rawdata_rows": rawdata_rows_for_source or None,
-                    "staging_rows": rows,
+                    "silver_rows": rows,
                     "n_null_geom": stats["n_null_geom"],
                     "n_empty_geom": stats["n_empty_geom"],
                     "size (MB)": r["file_size_mb"],
@@ -359,7 +375,7 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
                     "model": r["model"],
                     "source": r["source"] or "(n/a)",
                     "rawdata_rows": rawdata_by_source.get(r["source"], 0) or None,
-                    "staging_rows": None,
+                    "silver_rows": None,
                     "n_null_geom": None,
                     "n_empty_geom": None,
                     "size (MB)": None,
@@ -384,8 +400,8 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
                 min_value=0,
                 max_value=int(max_rows),
             ),
-            "staging_rows": st.column_config.ProgressColumn(
-                "staging_rows",
+            "silver_rows": st.column_config.ProgressColumn(
+                "silver_rows",
                 format="%d",
                 min_value=0,
                 max_value=int(max_rows),
@@ -395,7 +411,7 @@ def _tab_staging(staging_rows: list[dict], rawdata_rows: list[dict]) -> None:
 
     st.caption(
         f"{len(built)} materializado(s) · {len(not_built)} pendente(s) · "
-        f"{len(staging_rows)} modelo(s) declarado(s)."
+        f"{len(silver_rows)} modelo(s) declarado(s)."
     )
 
     if not built:
@@ -488,10 +504,10 @@ def _tab_runs(df: pd.DataFrame) -> None:
 
 
 def _list_known_parquets() -> list[str]:
-    """All parquets currently on disk under data/staging, data/rawdata and data/bronze."""
+    """All parquets currently on disk under data/silver, data/rawdata and data/bronze."""
     paths: list[Path] = []
-    if STAGING_DIR.exists():
-        paths.extend(sorted(STAGING_DIR.glob("*.parquet")))
+    if SILVER_DIR.exists():
+        paths.extend(sorted(SILVER_DIR.glob("*.parquet")))
     if RAWDATA_DIR.exists():
         paths.extend(sorted(RAWDATA_DIR.glob("*/*.parquet")))
     if BRONZE_DIR.exists():
@@ -530,7 +546,7 @@ def _tab_queries() -> None:
 
     params: list[str] = []
     if n_params > 0 and not parquets:
-        st.warning("Nenhum parquet encontrado em `data/staging/` ou `data/bronze/`.")
+        st.warning("Nenhum parquet encontrado em `data/silver/` ou `data/bronze/`.")
         return
 
     for i in range(n_params):
@@ -561,11 +577,11 @@ def main() -> None:
     all_rawdata_rows = scan_rawdata()
     rawdata_rows = _filter_rows(all_rawdata_rows, selection)
     bronze_rows = _filter_rows(scan_bronze(all_rawdata_rows), selection)
-    staging_rows = scan_staging()
+    silver_rows = scan_silver()
     runs_df = read_runs(runs_mtime())
 
-    tab_overview, tab_rawdata, tab_bronze, tab_staging, tab_runs, tab_queries = st.tabs(
-        ["Visão geral", "Rawdata health", "Bronze health", "Staging health", "Run history", "Queries"]
+    tab_overview, tab_rawdata, tab_bronze, tab_silver, tab_runs, tab_queries = st.tabs(
+        ["Visão geral", "Rawdata health", "Bronze health", "Silver health", "Run history", "Queries"]
     )
     with tab_overview:
         _tab_overview(rawdata_rows, runs_df)
@@ -573,8 +589,8 @@ def main() -> None:
         _tab_rawdata(rawdata_rows, selection)
     with tab_bronze:
         _tab_bronze(bronze_rows)
-    with tab_staging:
-        _tab_staging(staging_rows, rawdata_rows)
+    with tab_silver:
+        _tab_silver(silver_rows, rawdata_rows)
     with tab_runs:
         _tab_runs(runs_df)
     with tab_queries:

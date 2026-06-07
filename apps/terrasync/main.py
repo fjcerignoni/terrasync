@@ -1,3 +1,5 @@
+"""CLI entry point for the terrasync pipeline (ingest, transform, catalog, status)."""
+
 import argparse
 import asyncio
 import logging
@@ -13,7 +15,7 @@ from .paths import DBT_DIR, DBT_TARGET, repo_root
 
 
 def _load_dotenv() -> None:
-    """Carrega .env da raiz do repo sem depender de python-dotenv."""
+    """Load .env from the repo root without requiring python-dotenv."""
     env_file = repo_root() / ".env"
     if not env_file.exists():
         return
@@ -63,7 +65,7 @@ def _add_transform_parser(subparsers: argparse._SubParsersAction) -> None:
         "--select",
         metavar="SELECTOR",
         default=None,
-        help="dbt node selector (e.g. staging.stg_sicar).",
+        help="dbt node selector (e.g. silver.slv_sicar).",
     )
 
 
@@ -229,7 +231,7 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     runner = dbtRunner()
     _ensure_external_dirs(runner, logger, vars_override, select=args.select)
 
-    dbt_args = ["run"]
+    dbt_args = ["build"]
     if args.full_refresh:
         dbt_args.append("--full-refresh")
     if args.select:
@@ -242,7 +244,7 @@ def _run_transform(args: argparse.Namespace, logger: logging.Logger) -> None:
     logger.info("Running: dbt %s", " ".join(dbt_args))
     res = runner.invoke(dbt_args)
     if not res.success:
-        logger.error("dbt run failed.")
+        logger.error("dbt build failed.")
         raise SystemExit(1)
     logger.info("Transform finished.")
 
@@ -271,6 +273,7 @@ def _run_status(args: argparse.Namespace, logger: logging.Logger) -> None:
 
 
 def run() -> None:
+    """Parse CLI arguments and dispatch to the requested subcommand."""
     _load_dotenv()
     args = _parse_args()
     logger = setup_logging()

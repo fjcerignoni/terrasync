@@ -1,8 +1,15 @@
+"""Logging configuration for the terrasync CLI."""
+
 import logging
 import sys
 
 
 def setup_logging() -> logging.Logger:
+    """Configure and return the root terrasync logger.
+
+    Returns:
+        Configured Logger instance for the "terrasync" namespace.
+    """
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if reconfigure is not None:
         reconfigure(encoding="utf-8")

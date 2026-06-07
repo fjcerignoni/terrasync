@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 import httpx
@@ -43,8 +43,11 @@ class ProbeResult:
         return asdict(self)
 
 
+_BRT = timezone(timedelta(hours=-3))
+
+
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(_BRT).isoformat(timespec="seconds")
 
 
 def _classify(latency_ms: int) -> ProbeStatus:

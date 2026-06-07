@@ -1,11 +1,18 @@
 version: 2
 models:
-  - name: stg_sigmine
+  - name: slv_sigmine
     description: >-
-      Staging ANM SIGMINE — processos minerários ativos (incluindo áreas em
+      Silver ANM SIGMINE — processos minerários ativos (incluindo áreas em
       disponibilidade), Brasil inteiro. Layer overlapping: sobreposições entre
-      processos são informação válida (sem ST_CoverageClean). Geometrias em EPSG:4326.
+      processos são informação válida (sem ST_CoverageClean).
+      Geometrias em EPSG:4326.
     columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de processo|id.
+        tests:
+          - not_null
+          - unique
       - name: processo
         data_type: VARCHAR
         description: Identificador do processo (NNNNNN/AAAA).
@@ -24,13 +31,19 @@ models:
         description: Ano do processo minerário (4 dígitos).
       - name: area_ha
         data_type: DOUBLE
-        description: Área da poligonal em hectares conforme cadastro ANM (não calculada pelo sistema).
+        description: >-
+          Área da poligonal em hectares conforme cadastro ANM
+          (não calculada pelo sistema).
       - name: fase
         data_type: VARCHAR
-        description: Fase do processo de acordo com o regime de aproveitamento minerário.
+        description: >-
+          Fase do processo de acordo com o regime de
+          aproveitamento minerário.
       - name: ult_evento
         data_type: VARCHAR
-        description: Último evento associado ao processo no Sistema Cadastro Mineiro.
+        description: >-
+          Último evento associado ao processo no Sistema
+          Cadastro Mineiro.
       - name: nome
         data_type: VARCHAR
         description: Nome ou razão social do requerente/titular do processo.

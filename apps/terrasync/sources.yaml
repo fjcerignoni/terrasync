@@ -28,6 +28,24 @@ sources:
 
   # --- INPE ---
 
+  inpe_bdqueimadas:
+    type: csv_manual
+    display_name: "BDQueimadas - Focos de Calor"
+    description: >-
+      Focos de calor detectados por satélite (INPE/BDQueimadas). Fonte manual:
+      baixar CSV do bdqueimadas.inpe.br e colocar em data/cache/
+      com nome bdqueimadas_<data_inicio>_<data_fim>.csv.
+    category: events
+    provider: inpe
+    cadence: daily
+    epsg: 4326
+    lat_col: Latitude
+    lon_col: Longitude
+    layers:
+      - id: focos
+        name: "Focos de Calor"
+        geometry_type: Point
+
   prodes:
     type: wfs
     display_name: "PRODES - Desmatamento Anual"

@@ -1,8 +1,8 @@
-"""Scan staging layer parquets and cross-reference with dbt staging models.
+"""Scan silver layer parquets and cross-reference with dbt silver models.
 
-Mapping bronze ↔ staging is by textual convention: `stg_<source>[_<layer>].parquet`
+Mapping bronze ↔ silver is by textual convention: `slv_<source>[_<layer>].parquet`
 corresponds to one source under `data/bronze/<source>/`. Longest source-name
-prefix wins (so `stg_incra_sigef_privado` resolves to source `incra_sigef_privado`).
+prefix wins (so `slv_incra_sigef_privado` resolves to source `incra_sigef_privado`).
 """
 
 from __future__ import annotations
@@ -10,27 +10,27 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..config import SOURCES, STAGING_DIR
+from ..config import SOURCES, SILVER_DIR
 from ..paths import DBT_DIR
 
-_STG_MODELS_DIR = DBT_DIR / "models" / "staging"
+_SLV_MODELS_DIR = DBT_DIR / "models" / "silver"
 
 
-def _list_dbt_staging_models() -> list[str]:
-    if not _STG_MODELS_DIR.exists():
+def _list_dbt_silver_models() -> list[str]:
+    if not _SLV_MODELS_DIR.exists():
         return []
-    return sorted(p.stem for p in _STG_MODELS_DIR.rglob("stg_*.sql"))
+    return sorted(p.stem for p in _SLV_MODELS_DIR.rglob("slv_*.sql"))
 
 
 def _resolve_source_for_model(model: str) -> str | None:
-    """`stg_incra_sigef_privado` → `incra_sigef_privado`; `stg_sicar` → `sicar`.
+    """`slv_incra_sigef_privado` → `incra_sigef_privado`; `slv_sicar` → `sicar`.
 
     Longest-prefix match against known source names. Returns None if no source
-    name is a prefix of the model basename after stripping `stg_`.
+    name is a prefix of the model basename after stripping `slv_`.
     """
-    if not model.startswith("stg_"):
+    if not model.startswith("slv_"):
         return None
-    basename = model[len("stg_"):]
+    basename = model[len("slv_"):]
     candidates = [
         name for name in SOURCES.keys()
         if basename == name or basename.startswith(f"{name}_")
@@ -40,19 +40,19 @@ def _resolve_source_for_model(model: str) -> str | None:
     return max(candidates, key=len)
 
 
-def scan_staging() -> list[dict[str, Any]]:
-    """One row per staging model. Built models carry parquet stats; missing
+def scan_silver() -> list[dict[str, Any]]:
+    """One row per silver model. Built models carry parquet stats; missing
     models appear with `built=False` and empty stats."""
     rows: list[dict[str, Any]] = []
-    models = _list_dbt_staging_models()
+    models = _list_dbt_silver_models()
     # Include any parquet that exists without a dbt model (defensive).
     parquet_only = sorted(
-        p.stem for p in STAGING_DIR.glob("stg_*.parquet")
+        p.stem for p in SILVER_DIR.glob("slv_*.parquet")
         if p.stem not in models
     )
 
     for model in [*models, *parquet_only]:
-        parquet = STAGING_DIR / f"{model}.parquet"
+        parquet = SILVER_DIR / f"{model}.parquet"
         source = _resolve_source_for_model(model)
         if parquet.exists():
             stat = parquet.stat()

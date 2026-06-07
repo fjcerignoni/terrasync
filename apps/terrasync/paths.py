@@ -1,3 +1,5 @@
+"""Filesystem path constants resolved relative to the repository root."""
+
 from __future__ import annotations
 
 from pathlib import Path
