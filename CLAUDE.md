@@ -1,18 +1,18 @@
 # terrasync
 
-CLI Python para ingestão bulk de dados geoespaciais brasileiros (WFS/ArcGIS/ZIP shp) + staging dbt (DuckDB spatial). Arquitetura **medallion 4-tier**: bronze (parquet) → staging (DuckDB, EPSG:4326) → silver/gold (PostGIS, futuro).
+CLI Python para ingestão bulk de dados geoespaciais brasileiros (WFS/ArcGIS/ZIP shp) + silver dbt (DuckDB spatial). Arquitetura **medallion 4-tier**: bronze (parquet) → silver (DuckDB, EPSG:4326) → canonical/gold (PostGIS, futuro).
 
 Referência arquitetônica: `docs/architecture.md`.
 Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 
 ## Invariantes geo (não-negociáveis)
 
-- **CRS storage = EPSG:4326.** Toda geometria pós-staging está em 4326.
+- **CRS storage = EPSG:4326.** Toda geometria pós-silver está em 4326.
 - **Área = EPSG:5880** (Albers BR, equal-area) via macro `area_ha(geom)`, sob demanda. Nunca calcular área em 4326 (resultado em graus²).
-- **Toda geometria entra em staging pela macro `clean_geometry`**: `ST_MakeValid` + `ST_CollectionExtract(3)` + `ST_Multi` + reprojeção 4326 + bounds ±180/±90.
-- **Tipo canônico pós-staging = `MULTIPOLYGON`.** Schema uniforme a jusante.
+- **Toda geometria entra em silver pela macro `clean_geometry`**: `ST_MakeValid` + `ST_CollectionExtract(3)` + `ST_Multi` + reprojeção 4326 + bounds ±180/±90.
+- **Tipo canônico pós-silver = `MULTIPOLYGON`.** Schema uniforme a jusante.
 - **Bronze é imutável.** Sem particionamento temporal em snapshots geoespaciais.
-- Reprojetar **uma vez** em staging. Não reprojetar dentro de joins nem em modelos a jusante.
+- Reprojetar **uma vez** em silver. Não reprojetar dentro de joins nem em modelos a jusante.
 - Layers `layered_overlapping` (CAR, SIGEF) **não** recebem `ST_CoverageClean` — sobreposições são informação, não erro.
 - `ST_CoverageClean` **antes** do tiling, nunca depois.
 - Preferir `ST_CoverageUnion` sobre `ST_Union` quando entrada for coverage limpa.
@@ -28,13 +28,13 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
 
 ## Convenções
 
-- **Naming dbt**: `stg_*` (staging/DuckDB), `canonical_*` (silver/PostGIS), `tile_*`/`analytical_*`/`mart_*` (gold/PostGIS, futuro).
+- **Naming dbt**: `slv_*` (silver/DuckDB), `canonical_*` (canonical/PostGIS), `tile_*`/`analytical_*`/`mart_*` (gold/PostGIS, futuro).
 - **Paths em SQL via macros**, nunca literais. Três macros centralizam o filesystem de dados:
   - `{{ bronze_path('source') }}` → `../../data/bronze/<source>/*.parquet` (aceita `glob=` para padrão custom).
-  - `{{ staging_path('stg_modelo') }}` → `../../data/staging/<stg_modelo>.parquet` (usar em `location=`).
+  - `{{ silver_path('slv_modelo') }}` → `../../data/silver/<slv_modelo>.parquet` (usar em `location=`).
   - `{{ export_path('cliente', 'modelo') }}` → `../../data/exports/<cliente>/<modelo>/v=<YYYY-MM-DD>` (versão via `var('<cliente>_data_version')`, default `run_started_at`).
-- **Adicionar fonte poligonal** → ver `docs/workflows/add_polygon_source.md`. Resumo: `sources.yaml` + `sources.yml` dbt + `stg_*.sql` + `schema.yml`. Sem código Python novo para WFS/ArcGIS/ZIP.
-- **Export de cliente** → ver `docs/workflows/add_client_export.md`. Resumo: `exports/<client>/<model>.sql` + `.yml` co-localizado; recorte do staging compartilhado para entregável de cliente, **não é silver**.
+- **Adicionar fonte poligonal** → ver `docs/workflows/add_polygon_source.md`. Resumo: `sources.yaml` + `sources.yml` dbt + `slv_*.sql` + `schema.yml`. Sem código Python novo para WFS/ArcGIS/ZIP.
+- **Export de cliente** → ver `docs/workflows/add_client_export.md`. Resumo: `exports/<client>/<model>.sql` + `.yml` co-localizado; recorte do silver compartilhado para entregável de cliente, **não é canonical**.
 - **Sufixo `_calc`** marca coluna gerada pelo sistema (ex.: `area_ha_calc` via `area_ha`), distinta de campo homônimo vindo da fonte.
 - Pandas só no downloader (I/O heterogêneo). Em SQL, preferir DuckDB → PostGIS.
 
@@ -56,12 +56,32 @@ Design futuro silver/gold: `docs/blueprint_geo_pipeline.md`.
   - Macros que propagam colunas (`clean_geometry`) com `SELECT * EXCLUDE (...)` — mantidas pois são genéricas por design.
 - **Pacote `dbt-utils`** disponível em `packages.yml` para `accepted_range`, `unique_combination_of_columns`, etc.
 
+## Convenções de código
+
+As regras abaixo se aplicam a toda implementação nova e revisão de código.
+Arquivos completos em `docs/conventions/`:
+
+- **Python docstrings** (`docs/conventions/python-docstrings.md`):
+  Google-style, PEP 257, modo imperativo, máx. 80 chars/linha,
+  sem seção `Example:`.
+- **SQL formatting** (`docs/conventions/sql-formatting.md`):
+  Keywords em lowercase, `as` explícito em aliases, máx. 80 chars/linha,
+  `/* */` apenas para comentários multiline.
+- **YAML formatting** (`docs/conventions/yaml-formatting.md`):
+  Máx. 80 chars/linha, espaços (sem tabs), preservar quoting e semântica.
+
 ## Onde achar mais
 
-- **Diagrama, escopo, decisões consolidadas, glossário, estrutura de pastas**: `docs/architecture.md`.
-- **Design futuro silver/gold** (coverage types, tiling, templates canônicos): `docs/blueprint_geo_pipeline.md`.
-- **Receitas de workflow** (fonte poligonal, export de cliente): `docs/workflows/`.
-- **Histórico de sessões e decisões em andamento**: `ai_history.md` (ler apenas se a pergunta for sobre "por que decidimos X" ou estado de pendências).
+- **Diagrama, escopo, decisões consolidadas, glossário, estrutura de pastas**:
+  `docs/architecture.md`.
+- **Design futuro silver/gold** (coverage types, tiling, templates canônicos):
+  `docs/blueprint_geo_pipeline.md`.
+- **Convenções de código** (Python, SQL, YAML): `docs/conventions/`.
+- **Receitas de workflow** (fonte poligonal, export de cliente):
+  `docs/workflows/`.
+- **Histórico de sessões e decisões em andamento**: `ai_history.md` (ler
+  apenas se a pergunta for sobre "por que decidimos X" ou estado de
+  pendências).
 
 ## Em andamento
 

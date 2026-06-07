@@ -3,7 +3,7 @@
     location=export_path('scw', 'sigmine_opi')
 ) }}
 
-SELECT
+select
     processo,
     id,
     numero,
@@ -16,6 +16,7 @@ SELECT
     uso,
     uf,
     ds_processo,
-    {{ area_ha('geometry') }} AS area_ha_calc,
+    {{ area_ha('geometry') }} as area_ha_calc,
     geometry
-FROM {{ ref('stg_sigmine') }}
+from {{ ref('slv_sigmine') }}
+where fase is not null

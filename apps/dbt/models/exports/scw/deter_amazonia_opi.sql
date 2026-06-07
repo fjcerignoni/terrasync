@@ -4,10 +4,10 @@
 ) }}
 
 -- Export do cliente scw / projeto opi.
--- DETER Amazônia sem tratamento temático além do staging (geometria validada, EPSG:4326).
+-- DETER Amazônia sem tratamento temático além do silver (geometria validada, EPSG:4326).
 -- area_ha_calc: área equal-area computada (EPSG:5880) via macro area_ha.
 
-SELECT
+select
     gid,
     classname,
     quadrant,
@@ -22,7 +22,7 @@ SELECT
     mun_geocod,
     uf,
     publish_month,
-    {{ area_ha('geometry') }} AS area_ha_calc,
+    {{ area_ha('geometry') }} as area_ha_calc,
     geometry
-FROM {{ ref('stg_deter') }}
-WHERE biome = 'amazonia'
+from {{ ref('slv_deter') }}
+where biome = 'amazonia'

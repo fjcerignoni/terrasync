@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: prodes_ce_opi
+    description: >-
+      Export do cliente scw / projeto opi. Desmatamento anual PRODES Cerrado (INPE),
+      geometria validada e projetada em EPSG:4326. Filtro: image_date >= 2024-08-16.
+      Materializado como parquet versionado em data/exports/scw/prodes_ce_opi/v=YYYY-MM-DD/.
+    columns:
+      - name: uuid
+        data_type: VARCHAR
+        description: Identificador único do polígono na fonte PRODES.
+        tests:
+          - not_null
+          - unique
+      - name: uid
+        data_type: VARCHAR
+        description: Identificador alternativo do polígono.
+      - name: state
+        data_type: VARCHAR
+        description: Unidade federativa do polígono de desmatamento.
+        tests:
+          - not_null
+      - name: path_row
+        data_type: VARCHAR
+        description: Path/row do satélite de referência.
+      - name: main_class
+        data_type: VARCHAR
+        description: "Classe principal do polígono (ex.: DESMATAMENTO_VEG, DESMATAMENTO_CR)."
+        tests:
+          - not_null
+      - name: class_name
+        data_type: VARCHAR
+        description: Classe detalhada do polígono conforme legenda PRODES.
+      - name: def_cloud
+        data_type: INTEGER
+        description: Indicador de cobertura de nuvem associada à detecção (campo da fonte).
+      - name: julian_day
+        data_type: INTEGER
+        description: Dia juliano da imagem de detecção.
+      - name: image_date
+        data_type: DATE
+        description: Data da imagem de detecção do desmatamento.
+        tests:
+          - not_null
+      - name: year
+        data_type: INTEGER
+        description: Ano de referência PRODES (agosto a julho).
+        tests:
+          - not_null
+      - name: area_km
+        data_type: DOUBLE
+        description: Área do polígono em km² conforme calculado pela fonte PRODES.
+      - name: scene_id
+        data_type: DOUBLE
+        description: Identificador da cena/mosaico de imagens (normalizado para DOUBLE no staging).
+      - name: publish_year
+        data_type: INTEGER
+        description: Ano de publicação do dado no sistema PRODES.
+      - name: source
+        data_type: VARCHAR
+        description: Sistema de origem da detecção.
+      - name: satellite
+        data_type: VARCHAR
+        description: Satélite utilizado na detecção.
+      - name: sensor
+        data_type: VARCHAR
+        description: Sensor utilizado na detecção.
+      - name: area_ha_calc
+        data_type: DOUBLE
+        description: >-
+          Área em hectares computada pelo sistema a partir da geometria, via
+          reprojeção equal-area EPSG:5880 (macro area_ha). Sufixo _calc marca campo
+          gerado — distinto de area_km, que vem da fonte PRODES.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+      - name: geometry
+        data_type: GEOMETRY
+        description: Geometria MULTIPOLYGON do polígono de desmatamento em EPSG:4326.
+        tests:
+          - not_null

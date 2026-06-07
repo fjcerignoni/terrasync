@@ -1,7 +1,3 @@
----
-description: "Use when creating or editing YAML/YML files; enforce max 80 characters per line and safe wrapping."
-applyTo: "**/*.yaml", "**/*.yml"
----
 # YAML Formatting Conventions
 
 Apply these rules to all YAML files.

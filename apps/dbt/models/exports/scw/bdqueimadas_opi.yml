@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: bdqueimadas_opi
+    description: >-
+      Export do cliente scw / projeto opi. Focos de calor BDQueimadas (INPE)
+      cobertura nacional — geometria POINT validada em EPSG:4326, materializado
+      como parquet versionado em data/exports/scw/bdqueimadas_opi/v=YYYY-MM-DD/.
+    columns:
+      - name: data_hora
+        data_type: TIMESTAMP
+        description: Data e hora da detecção do foco (UTC).
+        tests:
+          - not_null
+      - name: satelite
+        data_type: VARCHAR
+        description: Satélite que detectou o foco.
+      - name: estado
+        data_type: VARCHAR
+        description: Unidade federativa do foco.
+        tests:
+          - not_null
+      - name: municipio
+        data_type: VARCHAR
+        description: Município do foco.
+      - name: bioma
+        data_type: VARCHAR
+        description: >-
+          Bioma onde o foco foi detectado
+          (Amazônia, Cerrado, Mata Atlântica, Caatinga, Pampa, Pantanal).
+        tests:
+          - not_null
+      - name: dia_sem_chuva
+        data_type: INTEGER
+        description: Número de dias consecutivos sem precipitação no ponto.
+      - name: precipitacao
+        data_type: DOUBLE
+        description: Precipitação acumulada no período (mm).
+      - name: risco_fogo
+        data_type: DOUBLE
+        description: >-
+          Índice de risco de fogo (0 a 1, conforme modelo INPE).
+          Valor -1 indica ausência de dado para o ponto.
+      - name: frp
+        data_type: DOUBLE
+        description: >-
+          Fire Radiative Power — intensidade radiativa do foco (MW). Indicador
+          da energia liberada pelo fogo; valores maiores indicam foco mais intenso.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      - name: geometry
+        data_type: GEOMETRY
+        description: POINT EPSG:4326 — localização do foco de calor.
+        tests:
+          - not_null

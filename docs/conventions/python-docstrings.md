@@ -1,7 +1,3 @@
----
-description: "Use when writing or updating Python docstrings, documenting Python functions, classes, methods, or modules."
-applyTo: "**/*.py"
----
 # Python Docstring Conventions
 
 Follow PEP 8 and Google-style docstrings for all Python code.

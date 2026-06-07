@@ -15,9 +15,9 @@ Foco temático: **governança de terra e Código Florestal** — cadastro rural 
 
 ### Faz parte
 - Aquisição (WFS / ArcGIS REST / ZIP shapefile) com retry, paginação e cache
-- Armazenamento em parquet seguindo arquitetura **medallion 4-tier** (bronze → staging implementados; silver → gold como alvo em PostGIS)
+- Armazenamento em parquet seguindo arquitetura **medallion 4-tier** (bronze → silver implementados; canonical → gold como alvo em PostGIS)
 - Catálogo DuckDB com views sobre os parquets bronze
-- Limpeza e padronização de geometria via dbt (camada staging, EPSG:4326)
+- Limpeza e padronização de geometria via dbt (camada silver, EPSG:4326)
 - Configuração declarativa de fontes em YAML
 - Notebook exploratório com mapa Leaflet
 
@@ -35,9 +35,9 @@ flowchart TD
     A["Fontes públicas<br/>(WFS / ArcGIS / ZIP shp)"]
     B["data/bronze/{source}/*.parquet<br/><i>imutável</i>"]
     C["DuckDB views<br/>bronze_*"]
-    D["dbt staging (stg_*)<br/><b>clean_geometry</b><br/>ST_MakeValid + CollectionExtract(3)<br/>ST_Multi → MULTIPOLYGON<br/>reproj EPSG:4326 + bounds ±180/±90"]
-    E["data/staging/stg_*.parquet<br/>EPSG:4326"]
-    F["silver — canonical_*<br/>(PostGIS)"]
+    D["dbt silver (slv_*)<br/><b>clean_geometry</b><br/>ST_MakeValid + CollectionExtract(3)<br/>ST_Multi → MULTIPOLYGON<br/>reproj EPSG:4326 + bounds ±180/±90"]
+    E["data/silver/slv_*.parquet<br/>EPSG:4326"]
+    F["canonical — canonical_*<br/>(PostGIS)"]
     G["gold — tile_* / analytical_* / mart_*<br/>(PostGIS)"]
 
     A -->|"download async"| B
@@ -58,8 +58,8 @@ Camadas medallion:
 | Camada | Conteúdo | Storage | Engine |
 |---|---|---|---|
 | **bronze** | raw imutável da origem | `data/bronze/{source}/*.parquet` | n/a (downloader) |
-| **staging** | geometrias válidas em EPSG:4326, bounds OK | `data/staging/stg_*.parquet` | DuckDB |
-| **silver** (futuro) | canônico, sem topologia inválida | PostGIS schema `silver` | PostGIS `ST_Coverage*` |
+| **silver** | geometrias válidas em EPSG:4326, bounds OK | `data/silver/slv_*.parquet` | DuckDB |
+| **canonical** (futuro) | canônico, sem topologia inválida | PostGIS schema `silver` | PostGIS `ST_Coverage*` |
 | **gold** (futuro) | overlays por tile/UF/bioma, marts | PostGIS schema `gold` | PostGIS |
 
 ## Estrutura de pastas (monorepo)
@@ -90,25 +90,25 @@ terrasync/
 │   │   ├── profiles.yml             # DuckDB profile (path: ../../data/terrasync.duckdb)
 │   │   ├── packages.yml
 │   │   ├── macros/
-│   │   │   ├── clean_geometry.sql   # gateway de staging
+│   │   │   ├── clean_geometry.sql   # gateway de silver
 │   │   │   ├── area_ha.sql          # área via EPSG:5880 sob demanda
 │   │   │   ├── bronze_path.sql      # {{ bronze_path('source') }} → ../../data/bronze/<source>/*.parquet
-│   │   │   ├── staging_path.sql     # {{ staging_path('stg_X') }} → ../../data/staging/stg_X.parquet
+│   │   │   ├── silver_path.sql      # {{ silver_path('slv_X') }} → ../../data/silver/slv_X.parquet
 │   │   │   └── export_path.sql      # {{ export_path('cliente', 'modelo') }} → ../../data/exports/.../v=YYYY-MM-DD
 │   │   ├── models/
-│   │   │   ├── staging/             # 25 stg_*.sql (DuckDB)
+│   │   │   ├── silver/              # 11 slv_*.sql (DuckDB)
 │   │   │   ├── exports/<cliente>/   # ex.: scw/sicar_opi.sql
-│   │   │   ├── silver/  (futuro)    # canonical_*.sql (PostGIS)
+│   │   │   ├── silver/canonical/ (futuro)  # canonical_*.sql (PostGIS)
 │   │   │   └── gold/    (futuro)    # tile_*/analytical_*/mart_*.sql (PostGIS)
 │   │   ├── seeds/    snapshots/    tests/    analyses/
 │   ├── api/  (placeholder)          # futuro: API HTTP
 │   └── web/  (placeholder)          # futuro: frontend JS/React
 ├── infra/
-│   ├── docker-compose.yml           # cwd para `docker compose`; volume ../data/staging
+│   ├── docker-compose.yml           # cwd para `docker compose`; volume ../data/silver
 │   └── docker/postgres/             # Dockerfile + init/10-extensions.sql + postgresql.conf
 ├── data/                            # gerado, gitignored — recurso compartilhado
 │   ├── bronze/                      # raw parquet por source/layer
-│   ├── staging/                     # parquet pós-clean_geometry (EPSG:4326)
+│   ├── silver/                      # parquet pós-clean_geometry (EPSG:4326)
 │   ├── exports/<cliente>/           # extrações de cliente, versionadas por v=YYYY-MM-DD
 │   ├── cache/                       # ZIPs transientes
 │   ├── manifests/                   # runs.jsonl — log estruturado de aquisição
@@ -122,7 +122,7 @@ terrasync/
 └── ai_history.md
 ```
 
-**Estratégia de paths** — modelos SQL nunca escrevem `data/...` literal. Três macros (`bronze_path`, `staging_path`, `export_path`) emitem `{{ var('data_root') }}/...` com `data_root: "../../data"` (relativo a `apps/dbt/`, cwd do dbt). No Python, `apps/terrasync/paths.py:repo_root()` sobe a árvore até achar `pyproject.toml` e expõe `DATA_DIR`, `DBT_DIR`, `DBT_TARGET` absolutos — CLI funciona de qualquer cwd. `_ensure_external_dirs` em `main.py` resolve as `location`s relativas do manifest contra `DBT_DIR` antes de `mkdir`.
+**Estratégia de paths** — modelos SQL nunca escrevem `data/...` literal. Três macros (`bronze_path`, `silver_path`, `export_path`) emitem `{{ var('data_root') }}/...` com `data_root: "../../data"` (relativo a `apps/dbt/`, cwd do dbt). No Python, `apps/terrasync/paths.py:repo_root()` sobe a árvore até achar `pyproject.toml` e expõe `DATA_DIR`, `DBT_DIR`, `DBT_TARGET` absolutos — CLI funciona de qualquer cwd. `_ensure_external_dirs` em `main.py` resolve as `location`s relativas do manifest contra `DBT_DIR` antes de `mkdir`.
 
 ## Modelos de dados de fonte (pydantic)
 
@@ -169,19 +169,19 @@ terrasync catalog
 ## Decisões arquiteturais consolidadas
 
 ### Medallion 4-tier com dbt no meio
-Bronze é parquet bruto exatamente como recebido da API. **Staging** (não confundir com "silver") é resultado da macro `clean_geometry` aplicada via dbt + DuckDB spatial. **Silver** e **gold** são camadas-alvo em PostGIS (blueprint), ainda não implementadas. Razão: separar aquisição (lenta, propensa a falha, sem lógica de negócio) de transformação (rápida, idempotente, versionada em SQL); isolar topologia pesada (`ST_Coverage*`) no engine certo (PostGIS) quando o custo justificar.
+Bronze é parquet bruto exatamente como recebido da API. **Silver** (DuckDB) é resultado da macro `clean_geometry` aplicada via dbt + DuckDB spatial — `slv_*` models em parquet EPSG:4326. **Canonical** e **gold** são camadas-alvo em PostGIS (blueprint), ainda não implementadas. Razão: separar aquisição (lenta, propensa a falha, sem lógica de negócio) de transformação (rápida, idempotente, versionada em SQL); isolar topologia pesada (`ST_Coverage*`) no engine certo (PostGIS) quando o custo justificar.
 
 ### DuckDB como catálogo, não como warehouse
-DuckDB cria *views* sobre parquets bronze (não materializa) e materializa silver como external parquet. Razão: arquivos são a fonte da verdade; DuckDB é a interface SQL/spatial. Permite ler bronze/silver fora do CLI com qualquer ferramenta que leia parquet.
+DuckDB cria *views* sobre parquets bronze (não materializa) e materializa silver como external parquet (`slv_*`). Razão: arquivos são a fonte da verdade; DuckDB é a interface SQL/spatial. Permite ler bronze/silver fora do CLI com qualquer ferramenta que leia parquet.
 
 ### Configuração declarativa em YAML, código curto
-`sources.yaml` (~430 linhas) é a única fonte da verdade dos endpoints, layers, paginação e geometria. `config.py` é só loader pydantic. Adicionar uma fonte = editar YAML + criar `stg_*.sql`. Sem código.
+`sources.yaml` (~430 linhas) é a única fonte da verdade dos endpoints, layers, paginação e geometria. `config.py` é só loader pydantic. Adicionar uma fonte = editar YAML + criar `slv_*.sql`. Sem código.
 
 ### 3 estratégias de download num pacote com dispatcher fino
 `downloader/` agrupa WFS (JSON + GML), ArcGIS REST e ZIP shapefile em módulos por estratégia (`wfs_json.py`, `wfs_gml.py`, `arcgis.py`, `zip_shp.py`), com `orchestrator.py` dispatchando por tipo de `DataSource` e `io.py` concentrando **todos** os side effects de filesystem (`save_geodataframe`, `remove_layer`, `parquet_path`) e a configuração de SSL. Razão: o módulo único de 445 linhas tinha virado catch-all e violava o anti-pattern "hidden side effects scattered"; a divisão por estratégia + um único `io.py` para FS preserva o reuso de helpers (que motivou a unificação anterior em S4) sem sacrificar legibilidade. API pública (`download_all`, `download_layer`) é estável — `main.py` e `catalog.py` não mudam.
 
-### Macro única `clean_geometry` como gateway de staging
-Todos os 25 staging models chamam a mesma macro. Saneamento canônico:
+### Macro única `clean_geometry` como gateway de silver
+Todos os 11 silver models chamam a mesma macro. Saneamento canônico:
 1. `ST_MakeValid` em geometrias inválidas
 2. `ST_CollectionExtract(geom, 3)` força saída para polígonos (descarta points/lines que surgem de `MakeValid` de polígonos quase-degenerados)
 3. `ST_Multi` normaliza saída para **`MULTIPOLYGON`** (tipo uniforme em todas as layers a jusante)
@@ -190,7 +190,7 @@ Todos os 25 staging models chamam a mesma macro. Saneamento canônico:
 
 Padronização vence variação. Se uma fonte exigir limpeza diferente, é melhor refletir isso na macro do que pulverizar SQL custom.
 
-A macro aceita um caminho de parquet literal (`parquet_path`) **ou** um parâmetro `relation` — um `SELECT` montado pelo chamador, usado quando o `stg_*` precisa abrir as colunas explicitamente (ex.: `stg_sicar`, cujos estados têm schema divergente). Ambos os caminhos passam pela mesma CTE `raw`; o gateway de saneamento permanece único.
+A macro aceita um caminho de parquet literal (`parquet_path`) **ou** um parâmetro `relation` — um `SELECT` montado pelo chamador, usado quando o `slv_*` precisa abrir as colunas explicitamente (ex.: `slv_sicar`, cujos estados têm schema divergente). Ambos os caminhos passam pela mesma CTE `raw`; o gateway de saneamento permanece único.
 
 ### CRS canônico: storage 4326, área via 5880
 Geometrias são armazenadas em **EPSG:4326** (graus). Cálculo de área usa **EPSG:5880** (Albers Brasil, equal-area) via macro `area_ha(geom)` sob demanda. Reprojeção em massa para 5880 no storage foi explicitamente recusada: custo > benefício enquanto a área é sob demanda.
@@ -208,9 +208,9 @@ Para `zip_shapefile`, o ZIP fica em `data/cache/` *durante* o download e *após*
 Cada parquet bronze carrega no **footer key-value** (`terrasync.acquired_at`, `source`, `layer_id`, `endpoint`, `source_epsg`, `n_features`) — metadado vive com o arquivo, zero overhead de schema. Em paralelo, cada tentativa de download (`ok`/`empty`/`failed`) gera uma linha JSON em `data/manifests/runs.jsonl`, consultável via `read_json_auto` no DuckDB. Razão: timestamp por feature violaria bronze imutável e seria desperdício de schema (mesmo valor em milhões de linhas); a aquisição é fato do arquivo, não da feature. Parquets pré-existentes ao patch ficam sem o metadado por design — fabricar uma data retroativa seria gravar dado falso.
 
 ### Branches de dados por cliente
-O tronco bronze + staging é **single-tenant compartilhado**: aquisição, validação e projeção de geometria servem a todos. A partir de staging, cada cliente recebe **branches** próprias — modelos de *export* que recortam e moldam o tronco para um entregável. Primeira branch: `scw` (projeto `opi`), com `sicar_opi` — recorte de 11 UFs do SICAR.
+O tronco bronze + silver é **single-tenant compartilhado**: aquisição, validação e projeção de geometria servem a todos. A partir de silver, cada cliente recebe **branches** próprias — modelos de *export* que recortam e moldam o tronco para um entregável. Primeira branch: `scw` (projeto `opi`), com `sicar_opi` — recorte de 11 UFs do SICAR.
 
-Um export **não é silver**: silver (PostGIS, contract enforced) é a canônica topologicamente limpa; export é um corte de cliente de um upstream, materializado como parquet `external` versionado. Hoje `sicar_opi` lê de `stg_sicar`; quando a canônica PostGIS existir, um export equivalente lerá dela.
+Um export **não é canonical**: canonical (PostGIS, contract enforced) é a canônica topologicamente limpa; export é um corte de cliente de um upstream, materializado como parquet `external` versionado. Hoje `sicar_opi` lê de `slv_sicar`; quando a canônica PostGIS existir, um export equivalente lerá dela.
 
 Versionamento por diretório particionado: `data/exports/<cliente>/<modelo>/v=YYYY-MM-DD/<modelo>.parquet`, dirigido pela dbt var `<cliente>_data_version` (default `run_started_at`). Histórico imutável, glob-readable, "latest" = maior `v=`.
 
@@ -245,7 +245,7 @@ Foi prototipado um subcomando `terrasync view` com Leaflet HTML e descartado. Ra
 | **EPSG:4326** | WGS 84 geográfico |
 | **EPSG:4674** | SIRGAS 2000 geográfico — datum oficial brasileiro; SRID de origem mais comum |
 | **EPSG:5880** | SIRGAS 2000 / Brazil Polyconic — equal-area BR |
-| **Bronze/Staging/Silver/Gold** | Camadas medallion 4-tier (ver §Arquitetura) |
+| **Bronze/Silver/Canonical/Gold** | Camadas medallion 4-tier (ver §Arquitetura) |
 | **Coverage** | Conjunto de polígonos não-sobrepostos com edges idênticos (vocabulário PostGIS `ST_Coverage*`) |
 | **Tile** | Célula do grid espacial (~700 tiles 0.5° no BR) usada como unidade de paralelismo no overlay |
 | **i3geo** | Framework open-source que serve mapas; INCRA usa em `acervofundiario.incra.gov.br` |
@@ -262,9 +262,9 @@ Gerenciador: `uv` (lockfile em `uv.lock`, dependencies em `pyproject.toml`). Pyt
 
 1. Editar `apps/terrasync/sources.yaml` com a entrada da source (tipo, endpoint, layers, paginação, EPSG, geometry_type).
 2. Se for nova categoria de fonte, talvez registrar um `group`.
-3. Criar `apps/dbt/models/staging/stg_{source}.sql` chamando `{{ clean_geometry(bronze_path('{source}'), source_epsg=4674) }}` (ajustar `source_epsg` se a fonte declarar SRID diferente em `sources.yaml`).
-4. Criar `apps/dbt/models/staging/stg_{source}.yml` co-localizado.
+3. Criar `apps/dbt/models/silver/<provider>/slv_{source}.sql` — ver `docs/workflows/add_polygon_source.md`.
+4. Criar `apps/dbt/models/silver/<provider>/schema.yml` co-localizado.
 5. Rodar `uv run terrasync ingest --source <novo>` para validar.
-6. Rodar `uv run terrasync transform --select stg_<novo>` para validar limpeza.
+6. Rodar `uv run terrasync transform --select slv_<novo>` para validar limpeza.
 
 Não há código novo a escrever para WFS, ArcGIS REST ou ZIP shapefile padrão — só YAML + SQL.

@@ -9,10 +9,25 @@ Cobre `zip_shapefile`, `wfs`, e `arcgis_rest` (FeatureServer). Não requer códi
 
 Use este workflow quando:
 - A fonte entrega polígonos (ou multipolígonos) — florestas, propriedades, processos, limites etc.
-- O dado não existe ainda no staging (`apps/dbt/models/staging/`)
-- Quer reutilizar o staging como base para exports ou futura camada silver
+- O dado não existe ainda no pipeline (bronze + silver)
+- Quer reutilizar o silver como base para exports ou futura camada canonical
 
 Para fontes de **pontos** (ex.: focos de calor), veja `add_point_source.md` (usa `clean_point_geometry`).
+
+---
+
+## Arquitetura esperada
+
+```
+rawdata/<source>/*.parquet   ← downloader (ingest)
+        ↓
+bronze/bro_*.sql             ← clean_geometry aqui, uma vez, por layer
+        ↓
+silver/slv_*.sql             ← UNION ALL de ref(bro_*), sem clean_geometry
+```
+
+`clean_geometry` **nunca** é chamada no silver. O silver é exclusivamente
+agregação de bronze refs.
 
 ---
 
@@ -46,7 +61,7 @@ sources:
     category: vegetation          # ex.: vegetation | agriculture | mining | indigenous | infrastructure
     provider: <provider>
     cadence: daily                # ou: weekly | monthly | annual
-    epsg: 4674                    # EPSG da fonte — reprojetar para 4326 acontece no staging
+    epsg: 4674                    # EPSG da fonte — reprojeção para 4326 acontece no bronze
     # encoding: UTF-8             # só para zip_shapefile com encoding não-UTF-8; omitir se desnecessário
     layers:
       - id: <layer_id>
@@ -62,94 +77,98 @@ a fonte é realmente UTF-8 e o fornecedor declarou incorretamente; manter UTF-8.
 
 ---
 
-## Passo 2 — `apps/dbt/models/staging/<provider>/sources.yml`
+## Passo 2 — Bronze SQL
 
-Cria (ou adiciona a) o arquivo de declaração dbt que aponta para o parquet rawdata.
+Criar `apps/dbt/models/bronze/<provider>/bro_<provider>_<name>.sql`.
 
-```yaml
-version: 2
+`clean_geometry` e `dedup` acontecem **aqui**, nunca no silver.
 
-sources:
-  - name: rawdata_<provider>
-    description: Rawdata <Provider> — parquets baixados pelo terrasync ingest.
-    tables:
-      - name: <source_name>
-        description: <Descrição da layer>.
-        meta:
-          external_location: "read_parquet('{{ env_var('TERRASYNC_DATA_ROOT', '../../data') }}/rawdata/<source_name>/<source_name>_<layer_id>.parquet')"
-```
-
-**Path pattern:** `rawdata/<source_name>/<source_name>_<layer_id>.parquet`
-Confirmar o path exato após o ingest com `ls data/rawdata/<source_name>/`.
-
-**Multi-layer (layers separadas = tabelas separadas):**
-```yaml
-    tables:
-      - name: <source_name>_layer1
-        meta:
-          external_location: "read_parquet('...rawdata/<source_name>/<source_name>_layer1.parquet')"
-      - name: <source_name>_layer2
-        meta:
-          external_location: "read_parquet('...rawdata/<source_name>/<source_name>_layer2.parquet')"
-```
-
-**Multi-layer (layers com schema idêntico = glob union):**
-```yaml
-        meta:
-          external_location: "read_parquet('...rawdata/<source_name>/*.parquet', union_by_name=true, filename=true)"
-```
-
----
-
-## Passo 3 — Staging SQL
-
-Criar `apps/dbt/models/staging/<provider>/stg_<name>.sql`.
-
-### Variante A — simples (colunas já em lowercase, sem necessidade de renomeação)
-
-Usar quando a fonte é WFS ou ArcGIS REST (colunas já vêm como declarado).
+### Variante A — colunas já em lowercase, sem renomeação
 
 ```sql
 {{ config(
     materialized='external',
-    location=staging_path('stg_<name>')
+    location=bronze_path('<provider>_<name>', '<layer_id>'),
+    tags=['bronze']
 ) }}
 
-{{ clean_geometry(relation="SELECT * FROM " ~ source('rawdata_<provider>', '<source_name>'), source_epsg=4674) }}
+{{
+    clean_geometry(
+        rawdata_path('<source_name>', glob='<source_name>_<layer_id>.parquet'),
+        source_epsg=4674,
+        id_columns=['<pk_col>'],
+        dedup_id=['<pk_col>'],
+        dedup_date='<date_col>'
+    )
+}}
 ```
 
-### Variante B — column-rename (shapefile DBF ou schema divergente)
+### Variante B — shapefile DBF (uppercase) ou tipagem a corrigir
 
-Usar quando os nomes de campo do .dbf são uppercase ou precisam de alias para padronizar lowercase.
-**Regra geral: sempre usar variante B para `zip_shapefile`.**
+Usar quando os nomes do .dbf são uppercase ou há casts necessários (ex.: BIGINT → DOUBLE).
 
 ```sql
 {{ config(
     materialized='external',
-    location=staging_path('stg_<name>')
+    location=bronze_path('<provider>_<name>', '<layer_id>'),
+    tags=['bronze']
 ) }}
 
--- Colunas renomeadas para lowercase; case original do .dbf pode variar —
--- DuckDB resolve via case-insensitive matching no read_parquet.
 {% set source_rel %}
-SELECT
-    COLUNA_A     AS coluna_a,
-    COLUNA_B     AS coluna_b,
-    ColunaC      AS coluna_c,    -- DuckDB aceita qualquer case no SELECT
-    ...
+select
+    COLUNA_A     as coluna_a,
+    COLUNA_B     as coluna_b,
+    cast(NUMERO  as double) as numero,   -- corrigir tipo se necessário
     geometry
-FROM {{ source('rawdata_<provider>', '<source_name>') }}
+from read_parquet(
+    '{{ rawdata_path("<source_name>", glob="<source_name>_<layer_id>.parquet") }}'
+)
 {% endset %}
 
-{{ clean_geometry(relation=source_rel, source_epsg=4674) }}
+{{
+    clean_geometry(
+        relation=source_rel,
+        source_epsg=4674,
+        id_columns=['coluna_a', 'coluna_b'],
+        dedup_id=['coluna_a'],
+        dedup_date='coluna_data'
+    )
+}}
 ```
 
-`clean_geometry` aplica `ST_MakeValid` + `ST_CollectionExtract(3)` + `ST_Multi` + reprojeção EPSG:4326.
-Output sempre `MULTIPOLYGON` em EPSG:4326.
+### Variante C — coluna derivada de contexto (biome, tipo, etc.)
+
+Quando a fonte tem múltiplas layers que serão unidas no silver e precisam de
+uma coluna identificadora (ex.: `'privado' as tipo`), adicionar como literal no
+`source_rel`. O bronze **já sabe** qual layer representa.
+
+```sql
+{% set source_rel %}
+select
+    *,
+    'privado' as tipo
+from read_parquet(
+    '{{ rawdata_path("<source_name>", glob="<source_name>_privado.parquet") }}'
+)
+{% endset %}
+
+{{
+    clean_geometry(
+        relation=source_rel,
+        source_epsg=4674,
+        id_columns=['<pk_col>'],
+        dedup_id=['<pk_col>'],
+        dedup_date='<date_col>'
+    )
+}}
+```
+
+`clean_geometry` aplica `ST_Force2D` + `ST_MakeValid` + `ST_CollectionExtract(3)` +
+`ST_Multi` + reprojeção EPSG:4326. Output sempre `MULTIPOLYGON` em EPSG:4326.
 
 ---
 
-## Passo 4 — `apps/dbt/models/staging/<provider>/schema.yml`
+## Passo 3 — `apps/dbt/models/bronze/<provider>/schema.yml`
 
 **Antes de escrever**, inspecionar o parquet para confirmar tipos reais:
 
@@ -162,35 +181,95 @@ print(schema)
 
 ```yaml
 version: 2
-
 models:
-  - name: stg_<name>
+  - name: bro_<provider>_<name>
     description: >-
-      <Descrição completa>. Geometria MULTIPOLYGON em EPSG:4326 via clean_geometry.
+      Bronze <Provider> <Name> — clean_geometry(rawdata, <epsg>->4326).
+      Dedup por <pk_col>, keep mais recente por <date_col>.
+    config:
+      tags: ['bronze']
     columns:
-      - name: <pk_column>
+      - name: stg_id
         data_type: VARCHAR
-        description: Identificador único <do quê>. (verificar se é realmente único — ver Gotchas)
+        description: "Surrogate key MD5 de <pk_col>."
         tests:
           - not_null
-          - unique          # SOMENTE se empiricamente único — confirmar antes
-      - name: <coluna2>
-        data_type: VARCHAR  # ou INTEGER / DOUBLE / DATE / TIMESTAMP
+          - unique
+      - name: <pk_col>
+        data_type: VARCHAR
+        description: "<Descrição da PK da fonte>."
+        tests:
+          - not_null
+          - unique      # SOMENTE se empiricamente único — confirmar antes
+      - name: geometry
+        data_type: geometry
+        description: "MULTIPOLYGON EPSG:4326 — saida do clean_geometry."
+        tests:
+          - not_null
+```
+
+---
+
+## Passo 4 — Silver SQL
+
+Criar `apps/dbt/models/silver/<provider>/slv_<name>.sql`.
+
+O silver **não chama** `clean_geometry`. É exclusivamente union de refs bronze.
+
+### Fonte com layer única
+
+```sql
+{{ config(
+    materialized='external',
+    location=silver_path('slv_<name>')
+) }}
+
+select * from {{ ref('bro_<provider>_<name>') }}
+```
+
+### Fonte com múltiplas layers (schema idêntico ou compatível)
+
+```sql
+{{ config(
+    materialized='external',
+    location=silver_path('slv_<name>')
+) }}
+
+-- union_by_name alinha schemas se houver colunas opcionais entre layers.
+select * from {{ ref('bro_<provider>_<name>_layer1') }}
+union all by name
+select * from {{ ref('bro_<provider>_<name>_layer2') }}
+```
+
+---
+
+## Passo 5 — `apps/dbt/models/silver/<provider>/schema.yml`
+
+```yaml
+version: 2
+models:
+  - name: slv_<name>
+    description: >-
+      Silver <Provider> <Name> — <descrição>. Geometrias MULTIPOLYGON
+      em EPSG:4326 (clean_geometry aplicada na camada bronze).
+    columns:
+      - name: stg_id
+        data_type: VARCHAR
+        description: Surrogate key MD5 de <pk_col>.
+        tests:
+          - not_null
+          - unique
+      - name: <coluna>
+        data_type: VARCHAR   # ou INTEGER / DOUBLE / DATE / TIMESTAMP
         description: ...
         tests:
-          - not_null        # somente se o campo não tem NULLs no dado real
+          - not_null         # somente se o campo não tem NULLs no dado real
       - name: geometry
         data_type: GEOMETRY
         description: Geometria MULTIPOLYGON em EPSG:4326.
         tests:
           - not_null
 ```
-
-**Checklist de testes mínimos por modelo:**
-- `not_null` + `unique` na coluna PK (se existir PK real)
-- `not_null` em colunas declaradas NOT NULL no schema conceitual
-- `accepted_values` para colunas de status/categoria com valores conhecidos
-- `not_null` em `geometry`
 
 ---
 
@@ -208,11 +287,14 @@ print(schema)
 print(duckdb.sql(\"SELECT count(*), count(distinct <id_col>) FROM 'data/rawdata/<source_name>/*.parquet'\").fetchone())
 "
 
-# 3. Rodar staging
-uv run terrasync transform --select stg_<name>
+# 3. Rodar bronze
+uv run terrasync transform --select bro_<provider>_<name>
 
-# 4. Confirmar saída
-ls data/staging/stg_<name>.parquet
+# 4. Rodar silver
+uv run terrasync transform --select slv_<name>
+
+# 5. Confirmar saída
+ls data/silver/slv_<name>.parquet
 ```
 
 ---
@@ -238,10 +320,14 @@ ls data/staging/stg_<name>.parquet
    Não assumir pelos nomes de campo.
 
 5. **Multi-layer com schema divergente**
-   Quando layers do mesmo fornecedor têm colunas diferentes (ex.: algumas UFs do SICAR não têm
-   `data_atualizacao`), usar `union_by_name=true` no glob e tratar NULLs explicitamente no staging SQL.
+   Quando layers do mesmo fornecedor têm colunas diferentes (ex.: SICAR 27 UFs sem `data_atualizacao`
+   em 12 delas), cada layer vira um bronze separado. O silver usa `union all by name` que preenche
+   colunas ausentes com NULL automaticamente.
 
-6. **`clean_geometry` não recebe `SELECT *` implícito**
+6. **`clean_geometry` não recebe `SELECT *` implícito na Variante A**
    A macro emite `SELECT * EXCLUDE (geometry), <geom_expr> AS geometry`. Se o source já tem
    uma coluna `geometry`, a variante simples funciona. Se a coluna de geometria tem outro nome,
    declarar alias `AS geometry` no SELECT da Variante B.
+
+7. **`ST_Force2D` não precisa ser chamado manualmente**
+   `clean_geometry` já aplica `ST_Force2D` internamente. Não adicionar no `source_rel`.

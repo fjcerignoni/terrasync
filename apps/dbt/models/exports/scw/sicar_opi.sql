@@ -4,7 +4,7 @@
 ) }}
 
 -- Export do cliente scw / projeto opi.
--- Recorte: 11 UFs do SICAR sobre o staging compartilhado stg_sicar (validado + EPSG:4326).
+-- Recorte: 11 UFs do SICAR sobre o silver compartilhado slv_sicar (validado + EPSG:4326).
 -- area_ha_calc: area equal-area computada (EPSG:5880) — distinta de `area`, que vem da fonte.
 --
 -- Dedup: SICAR tem cod_imovel duplicado em raros casos (verificado: 2 dups no recorte,
@@ -15,8 +15,8 @@
 -- linha. Datas sao ISO 8601 ("YYYY-MM-DDTHH:MM:SS.sssZ"), sort lexicografico = sort
 -- cronologico. Empate final (raro): dat_criacao DESC.
 
-WITH ranked AS (
-    SELECT
+with ranked as (
+    select
         cod_imovel,
         status_imovel,
         dat_criacao,
@@ -28,18 +28,18 @@ WITH ranked AS (
         cod_municipio_ibge,
         m_fiscal,
         tipo_imovel,
-        {{ area_ha('geometry') }} AS area_ha_calc,
+        {{ area_ha('geometry') }} as area_ha_calc,
         geometry,
-        row_number() OVER (
-            PARTITION BY cod_imovel
-            ORDER BY COALESCE(data_atualizacao, dat_criacao) DESC NULLS LAST,
-                     dat_criacao DESC NULLS LAST
-        ) AS _rn
-    FROM {{ ref('stg_sicar') }}
-    WHERE uf IN ('AC', 'AM', 'AP', 'DF', 'GO', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO')
+        row_number() over (
+            partition by cod_imovel
+            order by coalesce(data_atualizacao, dat_criacao) desc nulls last,
+                     dat_criacao desc nulls last
+        ) as _rn
+    from {{ ref('slv_sicar') }}
+    where uf in ('AC', 'AM', 'AP', 'DF', 'GO', 'MA', 'MT', 'PA', 'RO', 'RR', 'TO')
 )
 
-SELECT
+select
     cod_imovel,
     status_imovel,
     dat_criacao,
@@ -53,5 +53,5 @@ SELECT
     tipo_imovel,
     area_ha_calc,
     geometry
-FROM ranked
-WHERE _rn = 1
+from ranked
+where _rn = 1

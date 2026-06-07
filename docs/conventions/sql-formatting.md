@@ -1,7 +1,3 @@
----
-description: "Use when creating or editing SQL files. Enforces line width, SQL style, and comment block formatting."
-applyTo: "**/*.sql"
----
 # SQL Formatting Conventions
 
 Apply these rules to all SQL files.

@@ -66,11 +66,11 @@ uv run terrasync ingest --source funai --debug
 ### Transform (silver)
 
 ```bash
-# Run all dbt staging models
+# Run all dbt silver models
 uv run terrasync transform
 
 # Run a specific model
-uv run terrasync transform --select stg_funai
+uv run terrasync transform --select slv_funai
 
 # Full refresh
 uv run terrasync transform --full-refresh
@@ -92,7 +92,7 @@ You can also run dbt directly from the dbt project directory:
 cd apps/dbt
 uv run dbt deps
 uv run dbt run
-uv run dbt run -s stg_funai
+uv run dbt run -s slv_funai
 ```
 
 ### Postgres (infra)
@@ -105,7 +105,7 @@ docker compose up -d postgres
 docker compose down
 ```
 
-The compose file bind-mounts `../data/staging` read-only at `/data/staging` inside the container so PostGIS can read staging parquets via `pg_parquet`.
+The compose file bind-mounts `../data/silver` read-only at `/data/silver` inside the container so PostGIS can read silver parquets via `pg_parquet`.
 
 ## Data layout
 
@@ -125,12 +125,12 @@ data/
 │   ├── deter_amazonia/*.parquet
 │   ├── ana/*.parquet                # one file per layer
 │   └── sfb/*.parquet
-├── staging/                         # Cleaned data (dbt staging models, EPSG:4326)
-│   ├── stg_sicar.parquet
-│   ├── stg_funai.parquet
-│   ├── stg_incra_*.parquet
-│   ├── stg_prodes_*.parquet
-│   ├── stg_ana_*.parquet
+├── silver/                          # Cleaned data (dbt silver models, EPSG:4326)
+│   ├── slv_sicar.parquet
+│   ├── slv_funai.parquet
+│   ├── slv_incra_*.parquet
+│   ├── slv_prodes.parquet
+│   ├── slv_deter.parquet
 │   └── ...
 ├── exports/<client>/                # Per-client extracts (versioned v=YYYY-MM-DD)
 ├── cache/                           # Transient artifacts (ZIP downloads)
@@ -161,9 +161,9 @@ Sources of type `zip_shapefile` keep the downloaded archive at `data/cache/{sour
 │   │   ├── dbt_project.yml
 │   │   ├── profiles.yml
 │   │   ├── packages.yml
-│   │   ├── macros/          # clean_geometry, area_ha, bronze_path, staging_path, export_path
+│   │   ├── macros/          # clean_geometry, area_ha, bronze_path, silver_path, export_path
 │   │   └── models/
-│   │       ├── staging/     # 25 dbt staging models (bronze → staging)
+│   │       ├── silver/      # 11 dbt silver models (bronze → silver, DuckDB)
 │   │       └── exports/     # per-client extracts (e.g. scw/sicar_opi)
 │   ├── api/                 # placeholder (future HTTP API)
 │   └── web/                 # placeholder (future frontend)
